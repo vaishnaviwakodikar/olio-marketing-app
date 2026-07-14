@@ -1,0 +1,14 @@
+# Root dependencies
+node_modules/
+
+# Frontend
+apps/frontend/node_modules/
+apps/frontend/.next/
+apps/frontend/out/
+
+# Backend
+apps/backend/node_modules/
+
+# Environment files
+.env
+.env.*

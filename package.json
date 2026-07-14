@@ -1,0 +1,10 @@
+{
+  "name": "mailapp",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
+}
