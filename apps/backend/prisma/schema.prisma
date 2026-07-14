@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy
+// ---------------------------------------------------------------------------
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users     User[]
+  contacts  Contact[]
+  tags      Tag[]
+  audiences Audience[]
+  campaigns Campaign[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Contacts
+// ---------------------------------------------------------------------------
+
+model Contact {
+  id           String   @id @default(cuid())
+  name         String?
+  email        String?
+  phone        String?
+  // Arbitrary user-defined fields, e.g. { "city": "Nashik", "plan": "pro" }
+  customFields Json     @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  tags               ContactTag[]
+  campaignRecipients CampaignRecipient[]
+
+  // Postgres allows multiple NULLs in a unique index, so contacts with no
+  // email (or no phone) don't collide with each other - only real duplicate
+  // values within the same workspace are blocked.
+  @@unique([workspaceId, email])
+  @@unique([workspaceId, phone])
+  @@index([workspaceId])
+}
+
+model Tag {
+  id   String @id @default(cuid())
+  name String
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  contacts ContactTag[]
+
+  @@unique([workspaceId, name])
+}
+
+model ContactTag {
+  contactId String
+  tagId     String
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+}
+
+// ---------------------------------------------------------------------------
+// Audiences (saved filters over contacts)
+// ---------------------------------------------------------------------------
+
+model Audience {
+  id   String @id @default(cuid())
+  name String
+
+  // Stored filter definition, e.g.
+  // { "tag": "vip" } or { "field": "city", "equals": "Nashik" }
+  filter Json @default("{}")
+
+  createdAt DateTime @default(now())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+}
+
+// ---------------------------------------------------------------------------
+// Campaigns
+// ---------------------------------------------------------------------------
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+}
+
+enum RecipientSource {
+  AUDIENCE
+  PASTED_LIST
+}
+
+model Campaign {
+  id      String @id @default(cuid())
+  name    String
+  subject String
+  body    String
+
+  status      CampaignStatus @default(DRAFT)
+  scheduledAt DateTime?
+
+  recipientSource RecipientSource
+  // If sourced from an audience/tag, keep a pointer for reference / duplication
+  audienceId String?
+
+  // BullMQ job id, so we can look up / cancel the scheduled job later
+  queueJobId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  recipients CampaignRecipient[]
+
+  @@index([workspaceId])
+}
+
+enum RecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  OPENED
+  FAILED
+  UNMATCHED // for pasted entries that didn't match any saved contact
+}
+
+model CampaignRecipient {
+  id String @id @default(cuid())
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  // Nullable: an unmatched pasted email/phone has no linked Contact
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id])
+
+  // Raw value as pasted/looked-up, kept for display even if unmatched
+  rawEmail String?
+  rawPhone String?
+
+  status RecipientStatus @default(PENDING)
+
+  providerMessageId String? // id returned by the email provider, used to match webhooks
+  sentAt             DateTime?
+  deliveredAt         DateTime?
+  openedAt            DateTime?
+
+  @@index([campaignId])
+  @@index([providerMessageId])
+}
