@@ -2,6 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthedRequest } from "../middleware/auth";
 
@@ -33,7 +34,7 @@ router.post("/signup", async (req, res) => {
 
   // Workspace + first user created together in one transaction so we never
   // end up with a workspace that has no owner or a user with no workspace.
-  const { user, workspace } = await prisma.$transaction(async (tx) => {
+  const { user, workspace } = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const workspace = await tx.workspace.create({
       data: { name: workspaceName },
     });

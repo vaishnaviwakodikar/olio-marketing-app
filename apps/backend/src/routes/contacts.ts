@@ -156,11 +156,16 @@ router.post("/import", upload.single("file"), async (req: AuthedRequest, res) =>
     where: { workspaceId },
     select: { email: true, phone: true },
   });
+  type ExistingContact = (typeof existingContacts)[number];
   const seenEmails = new Set(
-    existingContacts.filter((c) => c.email).map((c) => c.email!.toLowerCase())
+    existingContacts
+      .filter((c: ExistingContact) => c.email)
+      .map((c: ExistingContact) => c.email!.toLowerCase())
   );
   const seenPhones = new Set(
-    existingContacts.filter((c) => c.phone).map((c) => c.phone!)
+    existingContacts
+      .filter((c: ExistingContact) => c.phone)
+      .map((c: ExistingContact) => c.phone!)
   );
 
   const toCreate: {

@@ -50,7 +50,7 @@ export async function resolveAudienceMembers(
 
   // customFields is a JSON blob with arbitrary keys, so field-equality
   // filtering happens in application code rather than in SQL.
-  return contacts.filter((contact) => {
+  return contacts.filter((contact: (typeof contacts)[number]) => {
     const cf = (contact.customFields ?? {}) as Record<string, unknown>;
     return filter.fields!.every(
       (f) => String(cf[f.field] ?? "").toLowerCase() === f.equals.toLowerCase()
@@ -91,7 +91,7 @@ router.get("/", async (req: AuthedRequest, res) => {
   });
 
   const withCounts = await Promise.all(
-    audiences.map(async (a) => {
+    audiences.map(async (a: (typeof audiences)[number]) => {
       const members = await resolveAudienceMembers(
         req.workspaceId!,
         a.filter as z.infer<typeof filterSchema>
