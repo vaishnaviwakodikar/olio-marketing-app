@@ -65,7 +65,11 @@ router.post("/login", async (req, res) => {
     res.json({ id: user.id, email: user.email });
 });
 router.post("/logout", (_req, res) => {
-    res.clearCookie(COOKIE_NAME);
+    res.clearCookie(COOKIE_NAME, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
+    });
     res.status(204).send();
 });
 router.get("/me", auth_1.requireAuth, async (req, res) => {
@@ -82,7 +86,7 @@ function issueSession(res, userId, workspaceId) {
     res.cookie(COOKIE_NAME, token, {
         httpOnly: true,
         secure: isProd,
-        sameSite: "lax",
+        sameSite: isProd ? "none" : "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 }
