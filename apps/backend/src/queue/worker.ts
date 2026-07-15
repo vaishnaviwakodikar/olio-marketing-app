@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { Worker, Job } from "bullmq";
-import { redisConnection } from "./connection";
+import { bullConnectionOptions } from "./connection";
 import { CAMPAIGN_QUEUE_NAME } from "./campaignQueue";
 import { prisma } from "../lib/prisma";
 import { sendEmail } from "../lib/mailProvider";
@@ -81,7 +81,7 @@ async function processCampaignJob(job: Job<CampaignJobData>) {
 const worker = new Worker<CampaignJobData>(
   CAMPAIGN_QUEUE_NAME,
   processCampaignJob,
-  { connection: redisConnection, concurrency: 5 }
+  { connection: bullConnectionOptions, concurrency: 5 }
 );
 
 worker.on("completed", (job) => {

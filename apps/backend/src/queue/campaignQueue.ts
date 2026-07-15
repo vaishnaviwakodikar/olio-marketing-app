@@ -1,10 +1,10 @@
 import { Queue } from "bullmq";
-import { redisConnection } from "./connection";
+import { bullConnectionOptions } from "./connection";
 
 export const CAMPAIGN_QUEUE_NAME = "campaign-send";
 
 export const campaignQueue = new Queue(CAMPAIGN_QUEUE_NAME, {
-  connection: redisConnection,
+  connection: bullConnectionOptions,
   defaultJobOptions: {
     // Keep a little history for debugging; don't let it grow unbounded.
     removeOnComplete: { count: 100 },

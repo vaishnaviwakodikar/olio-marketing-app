@@ -3,6 +3,7 @@ import multer from "multer";
 import { parse } from "csv-parse/sync";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
+import { Prisma } from "@prisma/client";
 import { requireAuth, AuthedRequest } from "../middleware/auth";
 
 const router = Router();
@@ -206,7 +207,11 @@ router.post("/import", upload.single("file"), async (req: AuthedRequest, res) =>
 
   if (toCreate.length > 0) {
     await prisma.contact.createMany({
-      data: toCreate.map((c) => ({ ...c, workspaceId })),
+      data: toCreate.map((c) => ({
+        ...c,
+        workspaceId,
+        customFields: c.customFields as Prisma.InputJsonValue,
+      })),
     });
   }
 
