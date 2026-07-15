@@ -139,10 +139,10 @@ export default function DashboardLayout({
 
       {/* Sidebar: fixed drawer on mobile, static column on desktop */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-64 shrink-0 flex-col justify-between overflow-y-auto bg-[#0F2044] px-4 py-6 transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:w-60 lg:translate-x-0 ${
-          navOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
+  className={`fixed inset-y-0 left-0 z-50 flex h-screen h-dvh w-64 shrink-0 flex-col justify-between overflow-y-auto bg-[#0F2044] px-4 py-6 transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:w-60 lg:translate-x-0 ${
+    navOpen ? "translate-x-0" : "-translate-x-full"
+  }`}
+>
         <div>
           <div className="mb-8 flex items-center justify-between px-2">
             <div className="flex items-center gap-2 text-[#E3BE5D]">
