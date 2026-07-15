@@ -186,6 +186,77 @@ router.get("/:id", async (req: AuthedRequest, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Duplicate - copy an existing campaign into a fresh draft
+// ---------------------------------------------------------------------------
+
+router.post("/:id/duplicate", async (req: AuthedRequest, res) => {
+  const workspaceId = req.workspaceId!;
+
+  const original = await prisma.campaign.findFirst({
+    where: { id: req.params.id, workspaceId },
+    include: { recipients: true },
+  });
+  if (!original) {
+    return res.status(404).json({ error: "Campaign not found" });
+  }
+
+  type PendingRecipient = {
+    contactId?: string;
+    rawEmail?: string;
+    rawPhone?: string;
+    status: "PENDING" | "UNMATCHED";
+  };
+  let recipients: PendingRecipient[] = [];
+
+  if (original.recipientSource === "AUDIENCE" && original.audienceId) {
+    // Re-resolve membership fresh, since the audience may have changed
+    // since the original campaign was created.
+    const audience = await prisma.audience.findFirst({
+      where: { id: original.audienceId, workspaceId },
+    });
+
+    if (audience) {
+      const members = await resolveAudienceMembers(workspaceId, audience.filter);
+      recipients = members.map((m: { id: string }) => ({
+        contactId: m.id,
+        status: "PENDING" as const,
+      }));
+    }
+    // If the audience itself was deleted, fall through with empty
+    // recipients rather than failing the duplicate outright - the user
+    // can still edit and pick a new audience before sending.
+  } else {
+    // PASTED_LIST: copy the original recipient rows as-is, resetting
+    // anything send-specific.
+    recipients = original.recipients.map((r) => ({
+      contactId: r.contactId ?? undefined,
+      rawEmail: r.rawEmail ?? undefined,
+      rawPhone: r.rawPhone ?? undefined,
+      status: r.status === "UNMATCHED" ? ("UNMATCHED" as const) : ("PENDING" as const),
+    }));
+  }
+
+  const duplicate = await prisma.campaign.create({
+    data: {
+      name: `Copy of ${original.name}`,
+      subject: original.subject,
+      body: original.body,
+      recipientSource: original.recipientSource,
+      audienceId: original.audienceId,
+      status: "DRAFT",
+      scheduledAt: null,
+      queueJobId: null,
+      workspaceId,
+      ...(recipients.length > 0
+        ? { recipients: { createMany: { data: recipients } } }
+        : {}),
+    },
+    include: { recipients: true },
+  });
+
+  res.status(201).json(duplicate);
+});
+// ---------------------------------------------------------------------------
 // Delete / cancel a scheduled campaign
 // ---------------------------------------------------------------------------
 

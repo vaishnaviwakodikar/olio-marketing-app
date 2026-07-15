@@ -286,6 +286,10 @@ export default function CampaignsPage() {
     unmatchedCount: number;
   } | null>(null);
 
+  // Duplicate-related state
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+
   async function loadAll() {
     setLoading(true);
     try {
@@ -350,6 +354,25 @@ export default function CampaignsPage() {
       );
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDuplicate(id: string) {
+    setDuplicateError(null);
+    setDuplicatingId(id);
+    try {
+      const duplicated = await api.post<{ id: string }>(
+        `/api/campaigns/${id}/duplicate`,
+        {}
+      );
+      await loadAll();
+      window.location.href = `/dashboard/campaigns/${duplicated.id}`;
+    } catch (err) {
+      setDuplicateError(
+        err instanceof ApiError ? err.message : "Could not duplicate campaign"
+      );
+    } finally {
+      setDuplicatingId(null);
     }
   }
 
@@ -572,6 +595,13 @@ export default function CampaignsPage() {
         </form>
       )}
 
+      {duplicateError && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-500" />
+          {duplicateError}
+        </div>
+      )}
+
       {/* Campaign list */}
       <div className="overflow-hidden rounded-xl border border-[#0F2044]/10 bg-white shadow-sm">
         {/* Mobile: stacked cards, no horizontal scroll */}
@@ -607,9 +637,23 @@ export default function CampaignsPage() {
                     ? new Date(c.scheduledAt).toLocaleString()
                     : "Not scheduled"}
                 </p>
-                <span className="text-xs font-medium text-[#0F2044]/40">
-                  View analytics →
-                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDuplicate(c.id);
+                    }}
+                    disabled={duplicatingId === c.id}
+                    className="text-xs font-medium text-[#0F2044]/50 transition-colors hover:text-[#C9A227] disabled:opacity-40"
+                  >
+                    {duplicatingId === c.id ? "Duplicating..." : "Duplicate"}
+                  </button>
+                  <span className="text-xs font-medium text-[#0F2044]/40">
+                    View analytics →
+                  </span>
+                </div>
               </div>
             </Link>
           ))}
@@ -665,12 +709,23 @@ export default function CampaignsPage() {
                       : "—"}
                   </td>
                   <td className="px-4 py-3.5 text-right sm:px-5">
-                    <Link
-                      href={`/dashboard/campaigns/${c.id}`}
-                      className="text-xs font-medium text-[#0F2044] transition-colors hover:text-[#C9A227]"
-                    >
-                      View analytics →
-                    </Link>
+                    <div className="flex items-center justify-end gap-4">
+                      <button
+                        type="button"
+                        onClick={() => handleDuplicate(c.id)}
+                        disabled={duplicatingId === c.id}
+                        className="text-xs font-medium text-[#0F2044]/50 transition-colors hover:text-[#C9A227] disabled:opacity-40"
+                      >
+                        {duplicatingId === c.id ? "Duplicating..." : "Duplicate"}
+                        
+                      </button>
+                      <Link
+                        href={`/dashboard/campaigns/${c.id}`}
+                        className="text-xs font-medium text-[#0F2044] transition-colors hover:text-[#C9A227]"
+                      >
+                        View analytics →
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
