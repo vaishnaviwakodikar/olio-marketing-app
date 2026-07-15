@@ -216,7 +216,11 @@ router.post("/:id/duplicate", async (req: AuthedRequest, res) => {
     });
 
     if (audience) {
-      const members = await resolveAudienceMembers(workspaceId, audience.filter);
+  const filter = (audience.filter ?? {}) as {
+    fields?: { field: string; equals: string }[];
+    tag?: string;
+  };
+  const members = await resolveAudienceMembers(workspaceId, filter);
       recipients = members.map((m: { id: string }) => ({
         contactId: m.id,
         status: "PENDING" as const,
