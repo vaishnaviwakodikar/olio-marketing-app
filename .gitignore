@@ -12,3 +12,19 @@ apps/backend/node_modules/
 # Environment files
 .env
 .env.*
+
+# Test artifacts
+cookies.txt
+cookies2.txt
+login2.json
+scheduled.json
+# Test artifacts
+cookies.txt
+cookies2.txt
+login2.json
+scheduled.json
+
+login.json
+audience.json
+body.json
+campaign.json
