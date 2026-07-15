@@ -112,11 +112,11 @@ function ScheduleDatePicker({
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative w-full sm:w-auto">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex min-w-[190px] items-center justify-between gap-2 rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-3 py-1.5 text-left text-sm text-[#0F2044] transition-shadow focus:border-[#C9A227] focus:outline-none focus:ring-2 focus:ring-[#C9A227]/30"
+        className="flex w-full items-center justify-between gap-2 rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-3 py-1.5 text-left text-sm text-[#0F2044] transition-shadow focus:border-[#C9A227] focus:outline-none focus:ring-2 focus:ring-[#C9A227]/30 sm:min-w-[190px] sm:w-auto"
       >
         <span className={value ? "" : "text-[#0F2044]/35"}>
           {value ? formatDisplay(value) : "Pick date & time"}
@@ -136,7 +136,7 @@ function ScheduleDatePicker({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+8px)] z-20 w-[300px] rounded-xl border border-[#0F2044]/10 bg-white p-4 shadow-lg">
+        <div className="fixed inset-x-4 top-1/2 z-30 w-auto -translate-y-1/2 rounded-xl border border-[#0F2044]/10 bg-white p-4 shadow-lg sm:absolute sm:inset-x-auto sm:left-0 sm:top-[calc(100%+8px)] sm:w-[300px] sm:translate-y-0">
           {/* Month nav */}
           <div className="mb-3 flex items-center justify-between">
             <button
@@ -252,6 +252,14 @@ function ScheduleDatePicker({
             </button>
           </div>
         </div>
+      )}
+
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-20 bg-black/30 sm:hidden"
+          aria-hidden="true"
+        />
       )}
     </div>
   );
@@ -375,12 +383,12 @@ export default function CampaignsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8 flex items-end justify-between border-b border-[#0F2044]/10 pb-6">
+      <div className="mb-8 flex flex-col gap-4 border-b border-[#0F2044]/10 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#C9A227]">
             Outreach
           </p>
-          <h1 className="font-serif text-[28px] font-medium leading-tight text-[#0F2044]">
+          <h1 className="font-serif text-2xl font-medium leading-tight text-[#0F2044] sm:text-[28px]">
             Campaigns
           </h1>
           <p className="mt-1.5 text-sm text-[#0F2044]/55">
@@ -389,7 +397,7 @@ export default function CampaignsPage() {
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-[#0F2044] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a1730]"
+          className="w-full rounded-md bg-[#0F2044] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a1730] sm:w-auto"
         >
           {showForm ? "Close" : "New campaign"}
         </button>
@@ -399,13 +407,13 @@ export default function CampaignsPage() {
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="mb-8 space-y-6 rounded-xl border border-[#0F2044]/10 bg-white p-6 shadow-sm"
+          className="mb-8 space-y-6 rounded-xl border border-[#0F2044]/10 bg-white p-4 shadow-sm sm:p-6"
         >
           <div>
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#0F2044]/45">
               Message
             </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[#0F2044]/70">
                   Campaign name
@@ -450,11 +458,11 @@ export default function CampaignsPage() {
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#0F2044]/45">
               Recipients
             </p>
-            <div className="mb-3 inline-flex rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] p-0.5">
+            <div className="mb-3 inline-flex w-full rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] p-0.5 sm:w-auto">
               <button
                 type="button"
                 onClick={() => setSource("AUDIENCE")}
-                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
                   source === "AUDIENCE"
                     ? "bg-[#0F2044] text-white shadow-sm"
                     : "text-[#0F2044]/60 hover:text-[#0F2044]"
@@ -465,7 +473,7 @@ export default function CampaignsPage() {
               <button
                 type="button"
                 onClick={() => setSource("PASTED_LIST")}
-                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
                   source === "PASTED_LIST"
                     ? "bg-[#0F2044] text-white shadow-sm"
                     : "text-[#0F2044]/60 hover:text-[#0F2044]"
@@ -508,36 +516,38 @@ export default function CampaignsPage() {
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#0F2044]/45">
               When to send
             </p>
-            <div className="flex flex-wrap items-center gap-4">
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-[#0F2044]">
-                <input
-                  type="radio"
-                  checked={sendMode === "now"}
-                  onChange={() => setSendMode("now")}
-                  className="h-3.5 w-3.5 accent-[#C9A227]"
-                />
-                Send now
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-[#0F2044]">
-                <input
-                  type="radio"
-                  checked={sendMode === "later"}
-                  onChange={() => setSendMode("later")}
-                  className="h-3.5 w-3.5 accent-[#C9A227]"
-                />
-                Schedule for later
-              </label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+              <div className="flex items-center gap-4">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-[#0F2044]">
+                  <input
+                    type="radio"
+                    checked={sendMode === "now"}
+                    onChange={() => setSendMode("now")}
+                    className="h-3.5 w-3.5 accent-[#C9A227]"
+                  />
+                  Send now
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-[#0F2044]">
+                  <input
+                    type="radio"
+                    checked={sendMode === "later"}
+                    onChange={() => setSendMode("later")}
+                    className="h-3.5 w-3.5 accent-[#C9A227]"
+                  />
+                  Schedule for later
+                </label>
+              </div>
               {sendMode === "later" && (
                 <ScheduleDatePicker value={sendAt} onChange={setSendAt} />
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-4 border-t border-[#0F2044]/10 pt-6">
+          <div className="flex flex-col items-start gap-3 border-t border-[#0F2044]/10 pt-6 sm:flex-row sm:items-center sm:gap-4">
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-md bg-[#0F2044] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a1730] disabled:opacity-50"
+              className="w-full rounded-md bg-[#0F2044] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a1730] disabled:opacity-50 sm:w-auto"
             >
               {submitting
                 ? "Creating..."
@@ -564,65 +574,67 @@ export default function CampaignsPage() {
 
       {/* Campaign list */}
       <div className="overflow-hidden rounded-xl border border-[#0F2044]/10 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-[#0F2044]/10 bg-[#FBF8F2]">
-              <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50">
-                Name
-              </th>
-              <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50">
-                Status
-              </th>
-              <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50">
-                Scheduled
-              </th>
-              <th className="px-5 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-sm text-[#0F2044]/40">
-                  Loading campaigns...
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-[#0F2044]/10 bg-[#FBF8F2]">
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50 sm:px-5">
+                  Name
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50 sm:px-5">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50 sm:px-5">
+                  Scheduled
+                </th>
+                <th className="px-4 py-3 sm:px-5"></th>
               </tr>
-            )}
-            {!loading && campaigns.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-5 py-14 text-center">
-                  <p className="text-sm font-medium text-[#0F2044]/60">
-                    No campaigns yet
-                  </p>
-                  <p className="mt-1 text-xs text-[#0F2044]/40">
-                    Create your first campaign to reach your contacts.
-                  </p>
-                </td>
-              </tr>
-            )}
-            {campaigns.map((c) => (
-              <tr
-                key={c.id}
-                className="border-b border-[#0F2044]/8 transition-colors last:border-0 hover:bg-[#FBF8F2]/60"
-              >
-                <td className="px-5 py-3.5 font-medium text-[#0F2044]">{c.name}</td>
-                <td className="px-5 py-3.5">{statusBadge(c.status)}</td>
-                <td className="px-5 py-3.5 text-[#0F2044]/55">
-                  {c.scheduledAt
-                    ? new Date(c.scheduledAt).toLocaleString()
-                    : "—"}
-                </td>
-                <td className="px-5 py-3.5 text-right">
-                  <Link
-                    href={`/dashboard/campaigns/${c.id}`}
-                    className="text-xs font-medium text-[#0F2044] transition-colors hover:text-[#C9A227]"
-                  >
-                    View analytics →
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr>
+                  <td colSpan={4} className="px-5 py-10 text-center text-sm text-[#0F2044]/40">
+                    Loading campaigns...
+                  </td>
+                </tr>
+              )}
+              {!loading && campaigns.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-5 py-14 text-center">
+                    <p className="text-sm font-medium text-[#0F2044]/60">
+                      No campaigns yet
+                    </p>
+                    <p className="mt-1 text-xs text-[#0F2044]/40">
+                      Create your first campaign to reach your contacts.
+                    </p>
+                  </td>
+                </tr>
+              )}
+              {campaigns.map((c) => (
+                <tr
+                  key={c.id}
+                  className="border-b border-[#0F2044]/8 transition-colors last:border-0 hover:bg-[#FBF8F2]/60"
+                >
+                  <td className="px-4 py-3.5 font-medium text-[#0F2044] sm:px-5">{c.name}</td>
+                  <td className="px-4 py-3.5 sm:px-5">{statusBadge(c.status)}</td>
+                  <td className="px-4 py-3.5 text-[#0F2044]/55 sm:px-5">
+                    {c.scheduledAt
+                      ? new Date(c.scheduledAt).toLocaleString()
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3.5 text-right sm:px-5">
+                    <Link
+                      href={`/dashboard/campaigns/${c.id}`}
+                      className="text-xs font-medium text-[#0F2044] transition-colors hover:text-[#C9A227]"
+                    >
+                      View analytics →
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

@@ -41,20 +41,20 @@ export default function DashboardHome() {
 
   return (
     <div>
-      <h1 className="font-[family-name:var(--font-logo)] text-2xl italic text-[#14213D]">
+      <h1 className="font-[family-name:var(--font-logo)] text-xl italic text-[#14213D] sm:text-2xl">
         Overview
       </h1>
       <p className="mt-1 text-sm text-[#7A7566]">
         A quick look at what&apos;s happening in your workspace.
       </p>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:grid-cols-3 sm:gap-4">
         <StatCard label="Contacts" value={contacts?.length} href="/dashboard/contacts" />
         <StatCard label="Audiences" value={audiences?.length} href="/dashboard/audiences" />
         <StatCard label="Campaigns sent" value={sentCount} href="/dashboard/campaigns" />
       </div>
 
-      <div className="mt-10">
+      <div className="mt-8 sm:mt-10">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-medium text-[#3B3529]">Recent campaigns</h2>
           <Link
@@ -77,32 +77,34 @@ export default function DashboardHome() {
               .
             </p>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-[#E3DCC9] text-xs uppercase tracking-wide text-[#9A9384]">
-                  <th className="px-5 py-3 font-medium">Name</th>
-                  <th className="px-5 py-3 font-medium">Subject</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((c) => (
-                  <tr key={c.id} className="border-b border-[#EFEAD9] last:border-0 hover:bg-[#FBF8F2]">
-                    <td className="px-5 py-3">
-                      <Link href={`/dashboard/campaigns/${c.id}`} className="font-medium text-[#14213D] hover:underline">
-                        {c.name}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3 text-[#7A7566]">{c.subject}</td>
-                    <td className="px-5 py-3">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLES[c.status]}`}>
-                        {c.status}
-                      </span>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[#E3DCC9] text-xs uppercase tracking-wide text-[#9A9384]">
+                    <th className="px-4 py-3 font-medium sm:px-5">Name</th>
+                    <th className="px-4 py-3 font-medium sm:px-5">Subject</th>
+                    <th className="px-4 py-3 font-medium sm:px-5">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recent.map((c) => (
+                    <tr key={c.id} className="border-b border-[#EFEAD9] last:border-0 hover:bg-[#FBF8F2]">
+                      <td className="px-4 py-3 sm:px-5">
+                        <Link href={`/dashboard/campaigns/${c.id}`} className="font-medium text-[#14213D] hover:underline">
+                          {c.name}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-[#7A7566] sm:px-5">{c.subject}</td>
+                      <td className="px-4 py-3 sm:px-5">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLES[c.status]}`}>
+                          {c.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
@@ -122,10 +124,10 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="rounded-xl border border-[#E3DCC9] bg-white px-5 py-4 transition hover:border-[#C9A227]/50 hover:shadow-sm"
+      className="rounded-xl border border-[#E3DCC9] bg-white px-4 py-4 transition hover:border-[#C9A227]/50 hover:shadow-sm sm:px-5"
     >
       <p className="text-xs font-medium uppercase tracking-wide text-[#9A9384]">{label}</p>
-      <p className="mt-2 font-[family-name:var(--font-logo)] text-3xl italic text-[#14213D]">
+      <p className="mt-2 font-[family-name:var(--font-logo)] text-2xl italic text-[#14213D] sm:text-3xl">
         {value ?? "–"}
       </p>
     </Link>
