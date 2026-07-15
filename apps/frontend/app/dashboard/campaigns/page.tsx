@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "../../../lib/api";
 
@@ -16,6 +16,245 @@ interface Audience {
   id: string;
   name: string;
   memberCount: number;
+}
+
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function pad(n: number) {
+  return n.toString().padStart(2, "0");
+}
+
+// value format matches datetime-local: "YYYY-MM-DDTHH:mm"
+function toLocalValue(date: Date, hour: number, minute: number) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate()
+  )}T${pad(hour)}:${pad(minute)}`;
+}
+
+function formatDisplay(value: string) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  const dateStr = d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const timeStr = d.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${dateStr} · ${timeStr}`;
+}
+
+function ScheduleDatePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [viewMonth, setViewMonth] = useState(() => {
+    const base = value ? new Date(value) : new Date();
+    return new Date(base.getFullYear(), base.getMonth(), 1);
+  });
+  const [hour, setHour] = useState(() => (value ? new Date(value).getHours() : 9));
+  const [minute, setMinute] = useState(() =>
+    value ? new Date(value).getMinutes() : 0
+  );
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const selectedDate = value ? new Date(value) : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const firstOfMonth = viewMonth;
+  const startWeekday = firstOfMonth.getDay();
+  const daysInMonth = new Date(
+    firstOfMonth.getFullYear(),
+    firstOfMonth.getMonth() + 1,
+    0
+  ).getDate();
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  function pickDay(day: number) {
+    const date = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth(), day);
+    onChange(toLocalValue(date, hour, minute));
+  }
+
+  function updateTime(h: number, m: number) {
+    setHour(h);
+    setMinute(m);
+    const base = selectedDate ?? new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth(), 1);
+    onChange(toLocalValue(base, h, m));
+  }
+
+  function changeMonth(delta: number) {
+    setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1));
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex min-w-[190px] items-center justify-between gap-2 rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-3 py-1.5 text-left text-sm text-[#0F2044] transition-shadow focus:border-[#C9A227] focus:outline-none focus:ring-2 focus:ring-[#C9A227]/30"
+      >
+        <span className={value ? "" : "text-[#0F2044]/35"}>
+          {value ? formatDisplay(value) : "Pick date & time"}
+        </span>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="flex-shrink-0 text-[#0F2044]/50"
+        >
+          <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M3 9.5H21" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M8 3V6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M16 3V6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+8px)] z-20 w-[300px] rounded-xl border border-[#0F2044]/10 bg-white p-4 shadow-lg">
+          {/* Month nav */}
+          <div className="mb-3 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => changeMonth(-1)}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-[#0F2044]/50 transition-colors hover:bg-[#0F2044]/5 hover:text-[#0F2044]"
+              aria-label="Previous month"
+            >
+              ‹
+            </button>
+            <p className="font-serif text-sm font-medium text-[#0F2044]">
+              {MONTHS[viewMonth.getMonth()]} {viewMonth.getFullYear()}
+            </p>
+            <button
+              type="button"
+              onClick={() => changeMonth(1)}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-[#0F2044]/50 transition-colors hover:bg-[#0F2044]/5 hover:text-[#0F2044]"
+              aria-label="Next month"
+            >
+              ›
+            </button>
+          </div>
+
+          {/* Weekday labels */}
+          <div className="mb-1 grid grid-cols-7 gap-y-1">
+            {WEEKDAYS.map((w) => (
+              <div
+                key={w}
+                className="text-center text-[10px] font-semibold uppercase tracking-wide text-[#0F2044]/35"
+              >
+                {w}
+              </div>
+            ))}
+          </div>
+
+          {/* Day grid */}
+          <div className="grid grid-cols-7 gap-y-1">
+            {cells.map((day, i) => {
+              if (day === null) return <div key={`empty-${i}`} />;
+              const cellDate = new Date(
+                firstOfMonth.getFullYear(),
+                firstOfMonth.getMonth(),
+                day
+              );
+              const isPast = cellDate < today;
+              const isSelected =
+                selectedDate &&
+                selectedDate.getFullYear() === cellDate.getFullYear() &&
+                selectedDate.getMonth() === cellDate.getMonth() &&
+                selectedDate.getDate() === cellDate.getDate();
+              const isToday = cellDate.getTime() === today.getTime();
+
+              return (
+                <div key={day} className="flex justify-center">
+                  <button
+                    type="button"
+                    disabled={isPast}
+                    onClick={() => pickDay(day)}
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs transition-colors ${
+                      isSelected
+                        ? "bg-[#0F2044] font-semibold text-white"
+                        : isPast
+                        ? "cursor-not-allowed text-[#0F2044]/20"
+                        : isToday
+                        ? "font-semibold text-[#C9A227] hover:bg-[#C9A227]/15"
+                        : "text-[#0F2044]/80 hover:bg-[#0F2044]/8"
+                    }`}
+                  >
+                    {day}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Time picker */}
+          <div className="mt-4 flex items-center gap-2 border-t border-[#0F2044]/10 pt-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[#0F2044]/45">
+              Time
+            </span>
+            <select
+              value={hour}
+              onChange={(e) => updateTime(Number(e.target.value), minute)}
+              className="ml-auto rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-2 py-1 text-xs text-[#0F2044] focus:border-[#C9A227] focus:outline-none focus:ring-1 focus:ring-[#C9A227]"
+            >
+              {Array.from({ length: 24 }, (_, h) => (
+                <option key={h} value={h}>
+                  {pad(h)}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-[#0F2044]/40">:</span>
+            <select
+              value={minute}
+              onChange={(e) => updateTime(hour, Number(e.target.value))}
+              className="rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-2 py-1 text-xs text-[#0F2044] focus:border-[#C9A227] focus:outline-none focus:ring-1 focus:ring-[#C9A227]"
+            >
+              {[0, 15, 30, 45].map((m) => (
+                <option key={m} value={m}>
+                  {pad(m)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-md bg-[#0F2044] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0a1730]"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function CampaignsPage() {
@@ -107,89 +346,118 @@ export default function CampaignsPage() {
   }
 
   function statusBadge(status: Campaign["status"]) {
-    const styles: Record<Campaign["status"], string> = {
-      DRAFT: "bg-slate-100 text-slate-600",
-      SCHEDULED: "bg-amber-100 text-amber-700",
-      SENDING: "bg-blue-100 text-blue-700",
-      SENT: "bg-emerald-100 text-emerald-700",
+    const dot: Record<Campaign["status"], string> = {
+      DRAFT: "bg-[#0F2044]/40",
+      SCHEDULED: "bg-[#C9A227]",
+      SENDING: "bg-blue-500",
+      SENT: "bg-emerald-500",
+    };
+    const text: Record<Campaign["status"], string> = {
+      DRAFT: "text-[#0F2044]/60",
+      SCHEDULED: "text-[#8a6d15]",
+      SENDING: "text-blue-700",
+      SENT: "text-emerald-700",
+    };
+    const label: Record<Campaign["status"], string> = {
+      DRAFT: "Draft",
+      SCHEDULED: "Scheduled",
+      SENDING: "Sending",
+      SENT: "Sent",
     };
     return (
-      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles[status]}`}>
-        {status}
+      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${text[status]}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${dot[status]}`} />
+        {label[status]}
       </span>
     );
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      {/* Header */}
+      <div className="mb-8 flex items-end justify-between border-b border-[#0F2044]/10 pb-6">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Campaigns</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#C9A227]">
+            Outreach
+          </p>
+          <h1 className="font-serif text-[28px] font-medium leading-tight text-[#0F2044]">
+            Campaigns
+          </h1>
+          <p className="mt-1.5 text-sm text-[#0F2044]/55">
             Create and send email campaigns to your contacts.
           </p>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          className="rounded-md bg-[#0F2044] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a1730]"
         >
-          New campaign
+          {showForm ? "Close" : "New campaign"}
         </button>
       </div>
 
+      {/* Create form */}
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="mb-6 space-y-4 rounded-md border border-slate-200 bg-white p-4"
+          className="mb-8 space-y-6 rounded-xl border border-[#0F2044]/10 bg-white p-6 shadow-sm"
         >
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Campaign name
-              </label>
-              <input
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-              />
+          <div>
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#0F2044]/45">
+              Message
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[#0F2044]/70">
+                  Campaign name
+                </label>
+                <input
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. July product update"
+                  className="w-full rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-3 py-2 text-sm text-[#0F2044] placeholder:text-[#0F2044]/30 transition-shadow focus:border-[#C9A227] focus:outline-none focus:ring-2 focus:ring-[#C9A227]/30"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[#0F2044]/70">
+                  Subject line
+                </label>
+                <input
+                  required
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="What shows up in their inbox"
+                  className="w-full rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-3 py-2 text-sm text-[#0F2044] placeholder:text-[#0F2044]/30 transition-shadow focus:border-[#C9A227] focus:outline-none focus:ring-2 focus:ring-[#C9A227]/30"
+                />
+              </div>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Subject line
+            <div className="mt-4">
+              <label className="mb-1.5 block text-xs font-medium text-[#0F2044]/70">
+                Email body
               </label>
-              <input
+              <textarea
                 required
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                rows={4}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Write your message..."
+                className="w-full rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-3 py-2 text-sm text-[#0F2044] placeholder:text-[#0F2044]/30 transition-shadow focus:border-[#C9A227] focus:outline-none focus:ring-2 focus:ring-[#C9A227]/30"
               />
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Email body
-            </label>
-            <textarea
-              required
-              rows={4}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-            />
-          </div>
-
-          <div>
-            <p className="mb-1 text-xs font-medium text-slate-600">Recipients</p>
-            <div className="mb-2 flex gap-2">
+          <div className="border-t border-[#0F2044]/10 pt-6">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#0F2044]/45">
+              Recipients
+            </p>
+            <div className="mb-3 inline-flex rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] p-0.5">
               <button
                 type="button"
                 onClick={() => setSource("AUDIENCE")}
-                className={`rounded-md px-3 py-1 text-xs font-medium ${
+                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
                   source === "AUDIENCE"
-                    ? "bg-slate-900 text-white"
-                    : "border border-slate-300 text-slate-600"
+                    ? "bg-[#0F2044] text-white shadow-sm"
+                    : "text-[#0F2044]/60 hover:text-[#0F2044]"
                 }`}
               >
                 Pick an audience
@@ -197,10 +465,10 @@ export default function CampaignsPage() {
               <button
                 type="button"
                 onClick={() => setSource("PASTED_LIST")}
-                className={`rounded-md px-3 py-1 text-xs font-medium ${
+                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
                   source === "PASTED_LIST"
-                    ? "bg-slate-900 text-white"
-                    : "border border-slate-300 text-slate-600"
+                    ? "bg-[#0F2044] text-white shadow-sm"
+                    : "text-[#0F2044]/60 hover:text-[#0F2044]"
                 }`}
               >
                 Paste emails/phones
@@ -209,14 +477,14 @@ export default function CampaignsPage() {
 
             {source === "AUDIENCE" ? (
               audiences.length === 0 ? (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-[#0F2044]/40">
                   No audiences yet — create one on the Audiences page first.
                 </p>
               ) : (
                 <select
                   value={audienceId}
                   onChange={(e) => setAudienceId(e.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  className="w-full rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-3 py-2 text-sm text-[#0F2044] focus:border-[#C9A227] focus:outline-none focus:ring-2 focus:ring-[#C9A227]/30"
                 >
                   {audiences.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -231,47 +499,45 @@ export default function CampaignsPage() {
                 placeholder="Paste emails or phone numbers, separated by commas or new lines"
                 value={pastedList}
                 onChange={(e) => setPastedList(e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                className="w-full rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-3 py-2 text-sm text-[#0F2044] placeholder:text-[#0F2044]/30 focus:border-[#C9A227] focus:outline-none focus:ring-2 focus:ring-[#C9A227]/30"
               />
             )}
           </div>
 
-          <div>
-            <p className="mb-1 text-xs font-medium text-slate-600">When to send</p>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 text-sm text-slate-700">
+          <div className="border-t border-[#0F2044]/10 pt-6">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#0F2044]/45">
+              When to send
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-[#0F2044]">
                 <input
                   type="radio"
                   checked={sendMode === "now"}
                   onChange={() => setSendMode("now")}
+                  className="h-3.5 w-3.5 accent-[#C9A227]"
                 />
                 Send now
               </label>
-              <label className="flex items-center gap-1.5 text-sm text-slate-700">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-[#0F2044]">
                 <input
                   type="radio"
                   checked={sendMode === "later"}
                   onChange={() => setSendMode("later")}
+                  className="h-3.5 w-3.5 accent-[#C9A227]"
                 />
                 Schedule for later
               </label>
               {sendMode === "later" && (
-                <input
-                  type="datetime-local"
-                  required
-                  value={sendAt}
-                  onChange={(e) => setSendAt(e.target.value)}
-                  className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-                />
+                <ScheduleDatePicker value={sendAt} onChange={setSendAt} />
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 border-t border-[#0F2044]/10 pt-6">
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="rounded-md bg-[#0F2044] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0a1730] disabled:opacity-50"
             >
               {submitting
                 ? "Creating..."
@@ -283,58 +549,74 @@ export default function CampaignsPage() {
           </div>
 
           {lastResult && (
-            <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-              Campaign created: {lastResult.matchedCount} matched recipient
+            <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+              <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500" />
+              Campaign created — {lastResult.matchedCount} matched recipient
               {lastResult.matchedCount !== 1 ? "s" : ""}
               {lastResult.unmatchedCount > 0
                 ? `, ${lastResult.unmatchedCount} could not be matched`
                 : ""}
               .
-            </p>
+            </div>
           )}
         </form>
       )}
 
-      <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
+      {/* Campaign list */}
+      <div className="overflow-hidden rounded-xl border border-[#0F2044]/10 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-2">Name</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">Scheduled</th>
-              <th className="px-4 py-2"></th>
+          <thead>
+            <tr className="border-b border-[#0F2044]/10 bg-[#FBF8F2]">
+              <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50">
+                Name
+              </th>
+              <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50">
+                Status
+              </th>
+              <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50">
+                Scheduled
+              </th>
+              <th className="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-slate-400">
-                  Loading...
+                <td colSpan={4} className="px-5 py-10 text-center text-sm text-[#0F2044]/40">
+                  Loading campaigns...
                 </td>
               </tr>
             )}
             {!loading && campaigns.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-slate-400">
-                  No campaigns yet.
+                <td colSpan={4} className="px-5 py-14 text-center">
+                  <p className="text-sm font-medium text-[#0F2044]/60">
+                    No campaigns yet
+                  </p>
+                  <p className="mt-1 text-xs text-[#0F2044]/40">
+                    Create your first campaign to reach your contacts.
+                  </p>
                 </td>
               </tr>
             )}
             {campaigns.map((c) => (
-              <tr key={c.id} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-2">{c.name}</td>
-                <td className="px-4 py-2">{statusBadge(c.status)}</td>
-                <td className="px-4 py-2 text-slate-500">
+              <tr
+                key={c.id}
+                className="border-b border-[#0F2044]/8 transition-colors last:border-0 hover:bg-[#FBF8F2]/60"
+              >
+                <td className="px-5 py-3.5 font-medium text-[#0F2044]">{c.name}</td>
+                <td className="px-5 py-3.5">{statusBadge(c.status)}</td>
+                <td className="px-5 py-3.5 text-[#0F2044]/55">
                   {c.scheduledAt
                     ? new Date(c.scheduledAt).toLocaleString()
                     : "—"}
                 </td>
-                <td className="px-4 py-2 text-right">
+                <td className="px-5 py-3.5 text-right">
                   <Link
                     href={`/dashboard/campaigns/${c.id}`}
-                    className="text-xs font-medium text-slate-600 hover:underline"
+                    className="text-xs font-medium text-[#0F2044] transition-colors hover:text-[#C9A227]"
                   >
-                    View analytics
+                    View analytics →
                   </Link>
                 </td>
               </tr>

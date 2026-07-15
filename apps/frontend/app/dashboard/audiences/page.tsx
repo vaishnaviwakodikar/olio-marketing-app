@@ -36,6 +36,10 @@ export default function AudiencesPage() {
     null
   );
 
+  // delete confirm modal state
+  const [deleteTarget, setDeleteTarget] = useState<Audience | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   async function loadAudiences() {
     setLoading(true);
     try {
@@ -50,6 +54,15 @@ export default function AudiencesPage() {
   useEffect(() => {
     loadAudiences();
   }, []);
+
+  useEffect(() => {
+    if (!deleteTarget) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setDeleteTarget(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [deleteTarget]);
 
   function updateCondition(index: number, key: keyof FieldCondition, value: string) {
     setConditions((prev) =>
@@ -88,11 +101,17 @@ export default function AudiencesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this audience?")) return;
-    await api.delete(`/api/audiences/${id}`);
-    if (expandedId === id) setExpandedId(null);
-    await loadAudiences();
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/audiences/${deleteTarget.id}`);
+      if (expandedId === deleteTarget.id) setExpandedId(null);
+      setDeleteTarget(null);
+      await loadAudiences();
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function toggleExpand(id: string) {
@@ -116,14 +135,16 @@ export default function AudiencesPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Audiences</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="font-serif text-xl font-semibold text-[#0F2044]">
+            Audiences
+          </h1>
+          <p className="mt-1 text-sm text-[#0F2044]/60">
             Saved filters you can send campaigns to.
           </p>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          className="rounded-md bg-[#0F2044] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0a1730]"
         >
           New audience
         </button>
@@ -132,10 +153,10 @@ export default function AudiencesPage() {
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="mb-6 rounded-md border border-slate-200 bg-white p-4"
+          className="mb-6 rounded-md border border-[#0F2044]/10 bg-[#FBF8F2] p-4"
         >
           <div className="mb-3">
-            <label className="mb-1 block text-xs font-medium text-slate-600">
+            <label className="mb-1 block text-xs font-medium text-[#0F2044]/70">
               Name
             </label>
             <input
@@ -143,11 +164,11 @@ export default function AudiencesPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Mumbai contacts"
-              className="w-64 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              className="w-64 rounded-md border border-[#0F2044]/20 bg-white px-2 py-1.5 text-sm text-[#0F2044] focus:border-[#C9A227] focus:outline-none focus:ring-1 focus:ring-[#C9A227]"
             />
           </div>
 
-          <p className="mb-1 text-xs font-medium text-slate-600">
+          <p className="mb-1 text-xs font-medium text-[#0F2044]/70">
             Match contacts where all of these are true:
           </p>
           <div className="space-y-2">
@@ -157,20 +178,20 @@ export default function AudiencesPage() {
                   placeholder="field (e.g. city)"
                   value={c.field}
                   onChange={(e) => updateCondition(i, "field", e.target.value)}
-                  className="w-40 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  className="w-40 rounded-md border border-[#0F2044]/20 bg-white px-2 py-1.5 text-sm text-[#0F2044] focus:border-[#C9A227] focus:outline-none focus:ring-1 focus:ring-[#C9A227]"
                 />
-                <span className="text-sm text-slate-400">equals</span>
+                <span className="text-sm text-[#0F2044]/40">equals</span>
                 <input
                   placeholder="value (e.g. Mumbai)"
                   value={c.equals}
                   onChange={(e) => updateCondition(i, "equals", e.target.value)}
-                  className="w-40 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  className="w-40 rounded-md border border-[#0F2044]/20 bg-white px-2 py-1.5 text-sm text-[#0F2044] focus:border-[#C9A227] focus:outline-none focus:ring-1 focus:ring-[#C9A227]"
                 />
                 {conditions.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeCondition(i)}
-                    className="text-xs text-slate-400 hover:text-red-600"
+                    className="text-xs text-[#0F2044]/40 hover:text-red-600"
                   >
                     Remove
                   </button>
@@ -181,7 +202,7 @@ export default function AudiencesPage() {
           <button
             type="button"
             onClick={addCondition}
-            className="mt-2 text-xs font-medium text-slate-600 hover:underline"
+            className="mt-2 text-xs font-medium text-[#0F2044] hover:text-[#C9A227]"
           >
             + Add condition
           </button>
@@ -190,7 +211,7 @@ export default function AudiencesPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="rounded-md bg-[#0F2044] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0a1730] disabled:opacity-50"
             >
               {submitting ? "Creating..." : "Create audience"}
             </button>
@@ -200,36 +221,36 @@ export default function AudiencesPage() {
       )}
 
       <div className="space-y-3">
-        {loading && <p className="text-sm text-slate-400">Loading...</p>}
+        {loading && <p className="text-sm text-[#0F2044]/40">Loading...</p>}
         {!loading && audiences.length === 0 && (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-[#0F2044]/40">
             No audiences yet. Create one to group your contacts.
           </p>
         )}
         {audiences.map((a) => (
           <div
             key={a.id}
-            className="rounded-md border border-slate-200 bg-white p-4"
+            className="rounded-md border border-[#0F2044]/10 bg-white p-4"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-900">{a.name}</p>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="text-sm font-medium text-[#0F2044]">{a.name}</p>
+                <p className="mt-0.5 text-xs text-[#0F2044]/60">
                   {describeFilter(a.filter)}
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                <span className="rounded-full bg-[#C9A227]/15 px-2 py-0.5 text-xs font-medium text-[#0F2044]">
                   {a.memberCount} member{a.memberCount !== 1 ? "s" : ""}
                 </span>
                 <button
                   onClick={() => toggleExpand(a.id)}
-                  className="text-xs font-medium text-slate-600 hover:underline"
+                  className="text-xs font-medium text-[#0F2044] hover:text-[#C9A227]"
                 >
                   {expandedId === a.id ? "Hide" : "View members"}
                 </button>
                 <button
-                  onClick={() => handleDelete(a.id)}
+                  onClick={() => setDeleteTarget(a)}
                   className="text-xs text-red-600 hover:underline"
                 >
                   Delete
@@ -238,13 +259,13 @@ export default function AudiencesPage() {
             </div>
 
             {expandedId === a.id && (
-              <div className="mt-3 border-t border-slate-100 pt-3">
+              <div className="mt-3 border-t border-[#0F2044]/10 pt-3">
                 {!expandedDetail ? (
-                  <p className="text-xs text-slate-400">Loading members...</p>
+                  <p className="text-xs text-[#0F2044]/40">Loading members...</p>
                 ) : expandedDetail.members.length === 0 ? (
-                  <p className="text-xs text-slate-400">No matching contacts.</p>
+                  <p className="text-xs text-[#0F2044]/40">No matching contacts.</p>
                 ) : (
-                  <ul className="space-y-1 text-sm text-slate-600">
+                  <ul className="space-y-1 text-sm text-[#0F2044]/80">
                     {expandedDetail.members.map((m) => (
                       <li key={m.id}>
                         {m.name || "—"} {m.email ? `· ${m.email}` : ""}
@@ -257,6 +278,47 @@ export default function AudiencesPage() {
           </div>
         ))}
       </div>
+
+      {/* Delete confirm modal */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F2044]/40 backdrop-blur-sm"
+          onClick={() => !deleting && setDeleteTarget(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-lg border border-[#0F2044]/10 bg-[#FBF8F2] p-6 shadow-xl"
+          >
+            <h2 className="font-serif text-lg font-semibold text-[#0F2044]">
+              Delete audience?
+            </h2>
+            <p className="mt-2 text-sm text-[#0F2044]/70">
+              This will permanently delete{" "}
+              <span className="font-medium text-[#0F2044]">
+                {deleteTarget.name}
+              </span>
+              . This action cannot be undone.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="rounded-md border border-[#0F2044]/20 px-3 py-1.5 text-sm font-medium text-[#0F2044] hover:bg-[#0F2044]/5 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
