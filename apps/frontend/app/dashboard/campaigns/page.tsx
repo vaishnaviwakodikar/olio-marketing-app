@@ -574,7 +574,49 @@ export default function CampaignsPage() {
 
       {/* Campaign list */}
       <div className="overflow-hidden rounded-xl border border-[#0F2044]/10 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        {/* Mobile: stacked cards, no horizontal scroll */}
+        <div className="divide-y divide-[#0F2044]/8 sm:hidden">
+          {loading && (
+            <div className="px-4 py-10 text-center text-sm text-[#0F2044]/40">
+              Loading campaigns...
+            </div>
+          )}
+          {!loading && campaigns.length === 0 && (
+            <div className="px-5 py-14 text-center">
+              <p className="text-sm font-medium text-[#0F2044]/60">
+                No campaigns yet
+              </p>
+              <p className="mt-1 text-xs text-[#0F2044]/40">
+                Create your first campaign to reach your contacts.
+              </p>
+            </div>
+          )}
+          {campaigns.map((c) => (
+            <Link
+              key={c.id}
+              href={`/dashboard/campaigns/${c.id}`}
+              className="block px-4 py-3.5 transition-colors active:bg-[#FBF8F2]/60"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="font-medium text-[#0F2044]">{c.name}</p>
+                {statusBadge(c.status)}
+              </div>
+              <div className="mt-1.5 flex items-center justify-between">
+                <p className="text-xs text-[#0F2044]/55">
+                  {c.scheduledAt
+                    ? new Date(c.scheduledAt).toLocaleString()
+                    : "Not scheduled"}
+                </p>
+                <span className="text-xs font-medium text-[#0F2044]/40">
+                  View analytics →
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* Desktop/tablet: table */}
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
               <tr className="border-b border-[#0F2044]/10 bg-[#FBF8F2]">
