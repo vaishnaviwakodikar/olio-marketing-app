@@ -2,10 +2,10 @@
 
 A lightweight Mailchimp-style email marketing tool — manage contacts, build audiences, and send tracked email campaigns, either right away or scheduled through a real background queue. Built as a take-home assignment / learning project, from scratch, feature by feature.
 
-**Live app:** _[add your deployed frontend URL here]_
-**API:** _[add your deployed backend URL here]_
-**Repo:** _[add your GitHub repo URL here]_
-**Demo video:** _[add your Loom link here]_
+**Live app:** https://frontend-production-c7b3.up.railway.app
+**API:** https://backend-production-6171.up.railway.app
+**Repo:** https://github.com/vaishnaviwakodikar/olio-marketing-app.git
+**Demo video:** https://www.loom.com/share/fe0549344d9047939736ae0bd2524873
 
 ---
 
