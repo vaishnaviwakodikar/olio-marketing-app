@@ -11,8 +11,7 @@ const prisma_1 = require("../lib/prisma");
 const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
-// Every route below sits behind requireAuth, and every query filters by
-// req.workspaceId - that's what keeps this workspace-scoped.
+
 router.use(auth_1.requireAuth);
 // ---------------------------------------------------------------------------
 // List
@@ -70,8 +69,7 @@ router.patch("/:id", async (req, res) => {
     if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.flatten() });
     }
-    // Ownership check: fetch scoped by workspaceId so a stolen/guessed id
-    // from another workspace can never be edited here.
+    
     const existing = await prisma_1.prisma.contact.findFirst({
         where: { id: req.params.id, workspaceId: req.workspaceId },
     });
@@ -158,11 +156,10 @@ router.post("/import", upload.single("file"), async (req, res) => {
             skipped++;
             continue;
         }
-        // Anything beyond name/email/phone becomes a custom field automatically.
+        
         const { name: _n, email: _e, phone: _p, ...rest } = row;
         toCreate.push({ name, email, phone, customFields: rest });
-        // Mark as seen immediately so duplicates *within the same file* are
-        // also caught, not just duplicates against the existing DB.
+        
         if (email)
             seenEmails.add(email);
         if (phone)
@@ -202,4 +199,3 @@ async function findDuplicate(workspaceId, email, phone, excludeId) {
     });
 }
 exports.default = router;
-//# sourceMappingURL=contacts.js.map

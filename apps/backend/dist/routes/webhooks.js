@@ -7,10 +7,7 @@ const express_1 = require("express");
 const crypto_1 = __importDefault(require("crypto"));
 const prisma_1 = require("../lib/prisma");
 const router = (0, express_1.Router)();
-// Mailgun's webhook signing key. On most accounts this is the same as the
-// API key; newer accounts have a separate "HTTP webhook signing key" under
-// Account Settings -> API Security - use that instead if verification
-// keeps failing.
+
 const SIGNING_KEY = process.env.MAILGUN_WEBHOOK_SIGNING_KEY ?? process.env.MAILGUN_API_KEY;
 function isValidSignature(timestamp, token, signature) {
     if (!SIGNING_KEY)
@@ -21,9 +18,7 @@ function isValidSignature(timestamp, token, signature) {
         .digest("hex");
     return expected === signature;
 }
-// No requireAuth here - Mailgun calls this directly, it doesn't have a
-// session cookie. Authenticity is instead verified via the HMAC signature
-// Mailgun includes on every webhook payload.
+
 router.post("/mailgun", async (req, res) => {
     const { signature, "event-data": eventData } = req.body ?? {};
     if (!signature || !eventData) {
@@ -31,22 +26,19 @@ router.post("/mailgun", async (req, res) => {
     }
     const valid = isValidSignature(signature.timestamp, signature.token, signature.signature);
     if (!valid) {
-        // Log but still 200 - an invalid signature during local/dev testing
-        // (e.g. signing key not set yet) shouldn't cause Mailgun to endlessly
-        // retry. In production you'd want to reject with 401 instead.
+        
         console.warn("Mailgun webhook signature did not verify");
     }
     const event = eventData.event;
     const messageId = eventData.message?.headers?.["message-id"];
     if (!messageId) {
-        return res.status(200).json({ ok: true }); // nothing to match, ignore
+        return res.status(200).json({ ok: true }); 
     }
     const recipient = await prisma_1.prisma.campaignRecipient.findFirst({
         where: { providerMessageId: messageId },
     });
     if (!recipient) {
-        // Could be an event for a message this app didn't send, or the id
-        // wasn't stored - either way, nothing to update.
+       
         return res.status(200).json({ ok: true });
     }
     if (event === "delivered") {
@@ -67,4 +59,3 @@ router.post("/mailgun", async (req, res) => {
     res.status(200).json({ ok: true });
 });
 exports.default = router;
-//# sourceMappingURL=webhooks.js.map

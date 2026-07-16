@@ -285,7 +285,6 @@ function PaginationControls({
 }) {
   if (totalPages <= 1) return null;
 
-  // Build a compact page list: first, last, current +/-1, with ellipses
   const pages: (number | "ellipsis")[] = [];
   for (let p = 1; p <= totalPages; p++) {
     if (
@@ -367,11 +366,9 @@ export default function CampaignsPage() {
     unmatchedCount: number;
   } | null>(null);
 
-  // Duplicate-related state
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
 
   async function loadAll() {
@@ -385,16 +382,11 @@ export default function CampaignsPage() {
       setAudiences(a);
       if (a.length > 0 && !audienceId) setAudienceId(a[0].id);
     } catch {
-      // could surface a toast in a fuller build
     } finally {
       setLoading(false);
     }
   }
 
-  // The backend now paginates /api/campaigns server-side (a handful of
-  // campaigns per call, plus total/totalPages). We want pagination to live
-  // entirely on the frontend, so fetch every backend page up front and
-  // merge them into one full list before handing it to the table/cards.
   async function fetchAllCampaigns(): Promise<Campaign[]> {
     const first = await api.get<CampaignsResponse | Campaign[]>("/api/campaigns?page=1");
 
@@ -418,13 +410,10 @@ export default function CampaignsPage() {
 
   useEffect(() => {
     loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(campaigns.length / CAMPAIGNS_PER_PAGE));
 
-  // Keep currentPage in range whenever the campaign list changes size
-  // (e.g. after creating or duplicating a campaign shrinks/grows the list).
   useEffect(() => {
     setCurrentPage((p) => Math.min(Math.max(1, p), totalPages));
   }, [totalPages]);
@@ -440,9 +429,6 @@ export default function CampaignsPage() {
     setLastResult(null);
     setSubmitting(true);
     try {
-      // FormData instead of a plain JSON payload so the optional PDF
-      // attachment can ride along with the rest of the campaign fields
-      // in one request.
       const formData = new FormData();
       formData.set("name", name);
       formData.set("subject", subject);
@@ -475,7 +461,7 @@ export default function CampaignsPage() {
       setPastedList("");
       setSendAt("");
       setAttachment(null);
-      setCurrentPage(1); // new campaign lands on page 1 (list is presumably newest-first)
+      setCurrentPage(1); 
       await loadAll();
     } catch (err) {
       setFormError(

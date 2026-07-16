@@ -92,7 +92,7 @@ export default function DashboardLayout({
       .finally(() => setChecked(true));
   }, [router]);
 
-  // Close the mobile drawer whenever the route changes.
+ 
   useEffect(() => {
     setNavOpen(false);
   }, [pathname]);

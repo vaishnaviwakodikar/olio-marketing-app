@@ -10,11 +10,7 @@ router.use(auth_1.requireAuth);
 // ---------------------------------------------------------------------------
 // Filter shape
 // ---------------------------------------------------------------------------
-// {
-//   "tag": "vip",                                  // optional, contact must have this tag
-//   "fields": [{ "field": "city", "equals": "Mumbai" }]   // optional, AND'd together
-// }
-// Both are optional; an empty filter matches every contact in the workspace.
+
 const filterSchema = zod_1.z.object({
     tag: zod_1.z.string().optional(),
     fields: zod_1.z
@@ -40,8 +36,7 @@ async function resolveAudienceMembers(workspaceId, filter) {
     if (!filter.fields || filter.fields.length === 0) {
         return contacts;
     }
-    // customFields is a JSON blob with arbitrary keys, so field-equality
-    // filtering happens in application code rather than in SQL.
+    
     return contacts.filter((contact) => {
         const cf = (contact.customFields ?? {});
         return filter.fields.every((f) => String(cf[f.field] ?? "").toLowerCase() === f.equals.toLowerCase());
@@ -129,4 +124,3 @@ router.delete("/:id", async (req, res) => {
     res.status(204).send();
 });
 exports.default = router;
-//# sourceMappingURL=audiences.js.map

@@ -42,7 +42,6 @@ export default function ContactsPage() {
       const data = await api.get<Contact[]>("/api/contacts");
       setContacts(data);
     } catch {
-      // swallow - could show a toast in a fuller build
     } finally {
       setLoading(false);
     }

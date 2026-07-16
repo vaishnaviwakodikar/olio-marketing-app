@@ -15,7 +15,7 @@ const webhooks_1 = __importDefault(require("./routes/webhooks"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
     origin: process.env.FRONTEND_URL ?? "http://localhost:3000",
-    credentials: true, // required so the browser sends the auth cookie
+    credentials: true, 
 }));
 app.use(express_1.default.json());
 app.use((0, cookie_parser_1.default)());
@@ -23,8 +23,7 @@ app.use("/api/auth", auth_1.default);
 app.use("/api/contacts", contacts_1.default);
 app.use("/api/audiences", audiences_1.default);
 app.use("/api/campaigns", campaigns_1.default);
-app.use("/api/webhooks", webhooks_1.default); // no requireAuth - providers call this directly
+app.use("/api/webhooks", webhooks_1.default); 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 const PORT = process.env.PORT ?? 4000;
 app.listen(PORT, () => console.log(`API listening on :${PORT}`));
-//# sourceMappingURL=index.js.map

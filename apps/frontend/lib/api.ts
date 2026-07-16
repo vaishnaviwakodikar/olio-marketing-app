@@ -14,7 +14,7 @@ async function request<T>(
 ): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    credentials: "include", // sends the session cookie set by the backend
+    credentials: "include", 
     headers: {
       ...(options.body instanceof FormData
         ? {}
@@ -30,7 +30,6 @@ async function request<T>(
       message = body.error?.message ?? body.error ?? message;
       if (typeof message === "object") message = JSON.stringify(message);
     } catch {
-      // response wasn't JSON, keep the generic message
     }
     throw new ApiError(message, res.status);
   }

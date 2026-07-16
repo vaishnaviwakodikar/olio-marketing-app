@@ -25,8 +25,7 @@ async function processCampaignJob(job) {
     let failedCount = 0;
     for (const recipient of matchedRecipients) {
         const email = recipient.contact?.email ?? recipient.rawEmail;
-        // Mailgun only sends email, so a contact matched purely by phone (no
-        // email on file) can't actually be sent to here.
+        
         if (!email) {
             await prisma_1.prisma.campaignRecipient.update({
                 where: { id: recipient.id },
@@ -69,11 +68,8 @@ worker.on("completed", (job) => {
 worker.on("failed", (job, err) => {
     console.error(`Job ${job?.id} failed:`, err.message);
 });
-// The Worker opens its own blocking-read connection under the hood; same
-// reasoning as the Queue's error listener above - without this, a dropped
-// connection crashes the whole worker process instead of just reconnecting.
+
 worker.on("error", (err) => {
     console.error("Worker connection error:", err.message);
 });
 console.log("Campaign worker started, waiting for jobs...");
-//# sourceMappingURL=worker.js.map

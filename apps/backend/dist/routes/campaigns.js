@@ -19,9 +19,9 @@ const campaignSchema = zod_1.z
     recipientSource: zod_1.z.enum(["AUDIENCE", "PASTED_LIST"]),
     audienceId: zod_1.z.string().optional(),
     tag: zod_1.z.string().optional(),
-    // Free-form textarea: emails/phones separated by commas/newlines/spaces
+    
     pastedList: zod_1.z.string().optional(),
-    // ISO datetime string; omit to send immediately
+    
     sendAt: zod_1.z.string().datetime().optional(),
 })
     .refine((d) => d.recipientSource !== "AUDIENCE" || d.audienceId || d.tag, { message: "audienceId or tag is required when recipientSource is AUDIENCE" })
@@ -55,8 +55,7 @@ router.post("/", async (req, res) => {
         }));
     }
     else {
-        // PASTED_LIST: split on commas/newlines/whitespace, match each token
-        // against saved contacts by email or phone.
+        
         const tokens = data.pastedList
             .split(/[\s,]+/)
             .map((t) => t.trim())
@@ -171,13 +170,10 @@ router.post("/:id/duplicate", async (req, res) => {
                 status: "PENDING",
             }));
         }
-        // If the audience itself was deleted, fall through with empty
-        // recipients rather than failing the duplicate outright - the user
-        // can still edit and pick a new audience before sending.
+        
     }
     else {
-        // PASTED_LIST: copy the original recipient rows as-is, resetting
-        // anything send-specific.
+        
         recipients = original.recipients.map((r) => ({
             contactId: r.contactId ?? undefined,
             rawEmail: r.rawEmail ?? undefined,
@@ -204,9 +200,7 @@ router.post("/:id/duplicate", async (req, res) => {
     });
     res.status(201).json(duplicate);
 });
-// ---------------------------------------------------------------------------
-// Delete / cancel a scheduled campaign
-// ---------------------------------------------------------------------------
+
 router.delete("/:id", async (req, res) => {
     const campaign = await prisma_1.prisma.campaign.findFirst({
         where: { id: req.params.id, workspaceId: req.workspaceId },
@@ -222,4 +216,3 @@ router.delete("/:id", async (req, res) => {
     res.status(204).send();
 });
 exports.default = router;
-//# sourceMappingURL=campaigns.js.map

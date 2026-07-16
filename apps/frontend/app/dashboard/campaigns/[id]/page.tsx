@@ -68,13 +68,10 @@ export default function CampaignDetailPage() {
         );
         if (!cancelled) setCampaign(data);
       } catch {
-        // keep showing last known state on a transient poll failure
       }
     }
 
     load();
-    // Don't poll while the user is actively editing - a background refresh
-    // could otherwise clobber their in-progress form field.
     const interval = setInterval(() => {
       if (!editing) load();
     }, POLL_INTERVAL_MS);
@@ -82,7 +79,7 @@ export default function CampaignDetailPage() {
       cancelled = true;
       clearInterval(interval);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [params.id, editing]);
 
   function openEditForm() {

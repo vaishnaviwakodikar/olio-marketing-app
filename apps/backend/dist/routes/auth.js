@@ -29,8 +29,7 @@ router.post("/signup", async (req, res) => {
         return res.status(409).json({ error: "Email already in use" });
     }
     const passwordHash = await bcryptjs_1.default.hash(password, 10);
-    // Workspace + first user created together in one transaction so we never
-    // end up with a workspace that has no owner or a user with no workspace.
+    
     const { user, workspace } = await prisma_1.prisma.$transaction(async (tx) => {
         const workspace = await tx.workspace.create({
             data: { name: workspaceName },
@@ -91,4 +90,3 @@ function issueSession(res, userId, workspaceId) {
     });
 }
 exports.default = router;
-//# sourceMappingURL=auth.js.map

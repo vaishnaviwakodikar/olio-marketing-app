@@ -9,13 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     throw new Error("JWT_SECRET is not set");
 }
-/**
- * Every route that touches workspace-scoped data (contacts, audiences,
- * campaigns...) must sit behind this middleware, and must filter its
- * Prisma queries by `req.workspaceId` - never by a workspaceId taken from
- * the request body/query/params. That's what keeps account A from ever
- * being able to read account B's data, no matter what the client sends.
- */
+
 function requireAuth(req, res, next) {
     const token = req.cookies?.token;
     if (!token) {
@@ -31,4 +25,3 @@ function requireAuth(req, res, next) {
         return res.status(401).json({ error: "Invalid or expired session" });
     }
 }
-//# sourceMappingURL=auth.js.map
