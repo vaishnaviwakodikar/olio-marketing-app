@@ -669,7 +669,7 @@ export default function CampaignsPage() {
                       handleDuplicate(c.id);
                     }}
                     disabled={duplicatingId === c.id}
-                    className="text-xs font-medium text-[#0F2044]/50 transition-colors hover:text-[#C9A227] disabled:opacity-40"
+                    className="rounded-md border border-[#0F2044]/20 px-2.5 py-1 text-xs font-medium text-[#0F2044] transition-colors hover:border-[#C9A227] hover:bg-[#C9A227]/10 hover:text-[#8a6d15] disabled:opacity-40"
                   >
                     {duplicatingId === c.id ? "Duplicating..." : "Duplicate"}
                   </button>
@@ -737,10 +737,9 @@ export default function CampaignsPage() {
                         type="button"
                         onClick={() => handleDuplicate(c.id)}
                         disabled={duplicatingId === c.id}
-                        className="text-xs font-medium text-[#0F2044]/50 transition-colors hover:text-[#C9A227] disabled:opacity-40"
+                        className="rounded-md border border-[#0F2044]/20 px-3 py-1.5 text-xs font-medium text-[#0F2044] transition-colors hover:border-[#C9A227] hover:bg-[#C9A227]/10 hover:text-[#8a6d15] disabled:opacity-40"
                       >
                         {duplicatingId === c.id ? "Duplicating..." : "Duplicate"}
-                        
                       </button>
                       <Link
                         href={`/dashboard/campaigns/${c.id}`}
