@@ -84,11 +84,33 @@ router.post("/logout", (_req, res) => {
 });
 
 router.get("/me", requireAuth, async (req: AuthedRequest, res) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.userId },
-    select: { id: true, email: true, workspaceId: true },
+  const workspaceId = req.workspaceId!;
+
+  const [user, contactCount, campaignCount, sentCampaignCount] =
+    await prisma.$transaction([
+      prisma.user.findUnique({
+        where: { id: req.userId },
+        select: {
+          id: true,
+          email: true,
+          workspaceId: true,
+          createdAt: true,
+          workspace: { select: { name: true, createdAt: true } },
+        },
+      }),
+      prisma.contact.count({ where: { workspaceId } }),
+      prisma.campaign.count({ where: { workspaceId } }),
+      prisma.campaign.count({ where: { workspaceId, status: "SENT" } }),
+    ]);
+
+  res.json({
+    ...user,
+    stats: {
+      contacts: contactCount,
+      campaigns: campaignCount,
+      campaignsSent: sentCampaignCount,
+    },
   });
-  res.json(user);
 });
 
 function issueSession(res: any, userId: string, workspaceId: string) {
@@ -102,5 +124,54 @@ function issueSession(res: any, userId: string, workspaceId: string) {
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
+router.patch("/me/password", requireAuth, async (req: AuthedRequest, res) => {
+  const parsed = changePasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+  const { currentPassword, newPassword } = parsed.data;
+
+  const user = await prisma.user.findUnique({ where: { id: req.userId } });
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) {
+    return res.status(400).json({ error: "Current password is incorrect" });
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash },
+  });
+
+  res.status(204).send();
+});
+
+const renameWorkspaceSchema = z.object({
+  name: z.string().min(1).max(100),
+});
+
+router.patch("/workspace", requireAuth, async (req: AuthedRequest, res) => {
+  const parsed = renameWorkspaceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+
+  const workspace = await prisma.workspace.update({
+    where: { id: req.workspaceId },
+    data: { name: parsed.data.name },
+  });
+
+  res.json({ name: workspace.name });
+});
 
 export default router;

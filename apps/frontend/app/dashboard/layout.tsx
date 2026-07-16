@@ -22,7 +22,9 @@ const inter = Inter({
 interface Me {
   id: string;
   email: string;
-  workspaceId: string;
+  workspaceId: string
+  createdAt: string;
+  workspace: { name: string; createdAt: string };
 }
 
 const NAV_ITEMS = [
@@ -30,6 +32,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/contacts", label: "Contacts" },
   { href: "/dashboard/audiences", label: "Audiences" },
   { href: "/dashboard/campaigns", label: "Campaigns" },
+  { href: "/dashboard/profile", label: "Profile" },
 ];
 
 function MercuryMark({ className }: { className?: string }) {
