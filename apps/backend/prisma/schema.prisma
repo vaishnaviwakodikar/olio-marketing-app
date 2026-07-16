@@ -125,6 +125,13 @@ model Campaign {
   subject String
   body    String
 
+  // Optional PDF attachment, stored directly in Postgres (as bytes) so
+  // it's still available whenever the worker actually processes the send
+  // job - important since sends can be scheduled far in the future.
+  attachmentFilename String?
+  attachmentMimeType  String?
+  attachmentData      Bytes?
+
   status      CampaignStatus @default(DRAFT)
   scheduledAt DateTime?
 

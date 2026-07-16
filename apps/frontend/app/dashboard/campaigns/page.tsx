@@ -279,6 +279,7 @@ export default function CampaignsPage() {
   const [pastedList, setPastedList] = useState("");
   const [sendMode, setSendMode] = useState<"now" | "later">("now");
   const [sendAt, setSendAt] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [lastResult, setLastResult] = useState<{
@@ -318,25 +319,30 @@ export default function CampaignsPage() {
     setLastResult(null);
     setSubmitting(true);
     try {
-      const payload: Record<string, unknown> = {
-        name,
-        subject,
-        body,
-        recipientSource: source,
-      };
+      // FormData instead of a plain JSON payload so the optional PDF
+      // attachment can ride along with the rest of the campaign fields
+      // in one request.
+      const formData = new FormData();
+      formData.set("name", name);
+      formData.set("subject", subject);
+      formData.set("body", body);
+      formData.set("recipientSource", source);
       if (source === "AUDIENCE") {
-        payload.audienceId = audienceId;
+        formData.set("audienceId", audienceId);
       } else {
-        payload.pastedList = pastedList;
+        formData.set("pastedList", pastedList);
       }
       if (sendMode === "later" && sendAt) {
-        payload.sendAt = new Date(sendAt).toISOString();
+        formData.set("sendAt", new Date(sendAt).toISOString());
+      }
+      if (attachment) {
+        formData.set("attachment", attachment);
       }
 
       const result = await api.post<{
         matchedCount: number;
         unmatchedCount: number;
-      }>("/api/campaigns", payload);
+      }>("/api/campaigns", formData);
 
       setLastResult({
         matchedCount: result.matchedCount,
@@ -347,6 +353,7 @@ export default function CampaignsPage() {
       setBody("");
       setPastedList("");
       setSendAt("");
+      setAttachment(null);
       await loadAll();
     } catch (err) {
       setFormError(
@@ -474,6 +481,22 @@ export default function CampaignsPage() {
                 placeholder="Write your message..."
                 className="w-full rounded-md border border-[#0F2044]/15 bg-[#FBF8F2] px-3 py-2 text-sm text-[#0F2044] placeholder:text-[#0F2044]/30 transition-shadow focus:border-[#C9A227] focus:outline-none focus:ring-2 focus:ring-[#C9A227]/30"
               />
+            </div>
+            <div className="mt-4">
+              <label className="mb-1.5 block text-xs font-medium text-[#0F2044]/70">
+                Attach a PDF <span className="font-normal text-[#0F2044]/40">(optional)</span>
+              </label>
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+                className="block w-full text-sm text-[#0F2044]/70 file:mr-3 file:rounded-md file:border file:border-[#0F2044]/15 file:bg-[#FBF8F2] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-[#0F2044] file:transition-colors hover:file:bg-[#0F2044]/5"
+              />
+              {attachment && (
+                <p className="mt-1.5 text-xs text-[#0F2044]/45">
+                  {attachment.name} ({Math.round(attachment.size / 1024)} KB)
+                </p>
+              )}
             </div>
           </div>
 

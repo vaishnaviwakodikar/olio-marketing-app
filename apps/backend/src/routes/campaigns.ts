@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthedRequest } from "../middleware/auth";
@@ -7,6 +8,11 @@ import { enqueueCampaignSend, cancelCampaignSend } from "../queue/campaignQueue"
 
 const router = Router();
 router.use(requireAuth);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB, plenty for a PDF attachment
+});
 
 // ---------------------------------------------------------------------------
 // Create
@@ -35,13 +41,14 @@ const campaignSchema = z
     { message: "pastedList is required when recipientSource is PASTED_LIST" }
   );
 
-router.post("/", async (req: AuthedRequest, res) => {
+router.post("/", upload.single("attachment"), async (req: AuthedRequest, res) => {
   const parsed = campaignSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
   const data = parsed.data;
   const workspaceId = req.workspaceId!;
+  const attachmentFile = req.file; // present only if a PDF was attached
 
   // -------------------------------------------------------------------
   // Resolve recipients
@@ -112,6 +119,10 @@ router.post("/", async (req: AuthedRequest, res) => {
     return res.status(400).json({ error: "No recipients resolved" });
   }
 
+  if (attachmentFile && attachmentFile.mimetype !== "application/pdf") {
+    return res.status(400).json({ error: "Attachment must be a PDF file" });
+  }
+
   // -------------------------------------------------------------------
   // Create campaign + recipients, then enqueue the real send job
   // -------------------------------------------------------------------
@@ -129,6 +140,11 @@ router.post("/", async (req: AuthedRequest, res) => {
       status: isScheduledForFuture ? "SCHEDULED" : "DRAFT",
       workspaceId,
       recipients: { createMany: { data: recipients } },
+      ...(attachmentFile && {
+        attachmentFilename: attachmentFile.originalname,
+        attachmentMimeType: attachmentFile.mimetype,
+        attachmentData: attachmentFile.buffer,
+      }),
     },
     include: { recipients: true },
   });
@@ -251,6 +267,13 @@ router.post("/:id/duplicate", async (req: AuthedRequest, res) => {
       scheduledAt: null,
       queueJobId: null,
       workspaceId,
+      // Carry the attachment over too, so duplicating a campaign really
+      // does copy everything about it into a fresh editable draft.
+      ...(original.attachmentData && {
+        attachmentFilename: original.attachmentFilename,
+        attachmentMimeType: original.attachmentMimeType,
+        attachmentData: original.attachmentData,
+      }),
       ...(recipients.length > 0
         ? { recipients: { createMany: { data: recipients } } }
         : {}),

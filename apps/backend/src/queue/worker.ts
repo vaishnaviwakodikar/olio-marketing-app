@@ -30,6 +30,17 @@ async function processCampaignJob(job: Job<CampaignJobData>) {
     (r: (typeof campaign.recipients)[number]) => r.status !== "UNMATCHED"
   );
 
+  // Built once outside the loop and reused for every recipient - avoids
+  // re-reading the same bytes from campaign on each iteration.
+  const attachment =
+    campaign.attachmentData && campaign.attachmentFilename && campaign.attachmentMimeType
+      ? {
+          filename: campaign.attachmentFilename,
+          mimeType: campaign.attachmentMimeType,
+          data: Buffer.from(campaign.attachmentData),
+        }
+      : undefined;
+
   let sentCount = 0;
   let failedCount = 0;
 
@@ -52,6 +63,7 @@ async function processCampaignJob(job: Job<CampaignJobData>) {
         to: email,
         subject: campaign.subject,
         html: campaign.body,
+        attachment,
       });
       await prisma.campaignRecipient.update({
         where: { id: recipient.id },
