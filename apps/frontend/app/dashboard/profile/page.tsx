@@ -7,6 +7,7 @@ import { api, ApiError } from "../../../lib/api";
 interface Me {
   id: string;
   email: string;
+  name?: string;
   workspaceId: string;
   createdAt: string;
   workspace: { name: string; createdAt: string };
@@ -21,8 +22,14 @@ function formatDate(iso: string) {
   });
 }
 
-function initials(email: string) {
-  return email.trim().charAt(0).toUpperCase();
+function initials(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "?";
+  const parts = trimmed.split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+  }
+  return trimmed.charAt(0).toUpperCase();
 }
 
 export default function ProfilePage() {
@@ -55,8 +62,10 @@ export default function ProfilePage() {
 
   if (!me) return null;
 
+  const displayName = me.name?.trim() || me.email;
+
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="w-full max-w-6xl space-y-6">
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-[#C9A227]">
           Account
@@ -69,96 +78,214 @@ export default function ProfilePage() {
         </p>
       </div>
 
+      {/* Header / overview card spans full width */}
       <div className="rounded-2xl border border-[#E3DCC9] bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-[#F5D67D] via-[#E3BE5D] to-[#C9A227] font-[family-name:var(--font-logo)] text-2xl italic text-[#0F2044] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">
-            {initials(me.email)}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-base font-medium text-[#0F2044]">
-              {me.email}
-            </p>
-            <p className="text-sm text-[#7A7566]">
-              Member since {formatDate(me.createdAt)}
-            </p>
-          </div>
-        </div>
-
-        <div className="my-6 border-t border-[#E3DCC9]" />
-
-        <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-[#7A7566]">
-              Email
-            </dt>
-            <dd className="mt-1 text-sm text-[#0F2044]">{me.email}</dd>
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-[#F5D67D] via-[#E3BE5D] to-[#C9A227] font-[family-name:var(--font-logo)] text-2xl italic text-[#0F2044] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">
+              {initials(displayName)}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-medium text-[#0F2044]">
+                {displayName}
+              </p>
+              <p className="truncate text-sm text-[#7A7566]">{me.email}</p>
+              <p className="text-sm text-[#7A7566]">
+                Member since {formatDate(me.createdAt)}
+              </p>
+            </div>
           </div>
 
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-[#7A7566]">
-              Workspace
-            </dt>
-            <dd className="mt-1 text-sm text-[#0F2044]">
-              {me.workspace.name}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-[#7A7566]">
-              Workspace created
-            </dt>
-            <dd className="mt-1 text-sm text-[#0F2044]">
-              {formatDate(me.workspace.createdAt)}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-[#7A7566]">
-              User ID
-            </dt>
-            <dd className="mt-1 truncate font-mono text-xs text-[#7A7566]">
-              {me.id}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="my-6 border-t border-[#E3DCC9]" />
-
-        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#7A7566]">
-          Workspace Activity
-        </p>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="rounded-xl bg-[#FBF8F2] p-4 text-center">
-            <p className="font-[family-name:var(--font-logo)] text-2xl italic text-[#0F2044]">
-              {me.stats?.contacts ?? 0}
-            </p>
-            <p className="mt-1 text-xs text-[#7A7566]">Contacts</p>
-          </div>
-          <div className="rounded-xl bg-[#FBF8F2] p-4 text-center">
-            <p className="font-[family-name:var(--font-logo)] text-2xl italic text-[#0F2044]">
-              {me.stats?.campaigns ?? 0}
-            </p>
-            <p className="mt-1 text-xs text-[#7A7566]">Campaigns</p>
-          </div>
-          <div className="rounded-xl bg-[#FBF8F2] p-4 text-center">
-            <p className="font-[family-name:var(--font-logo)] text-2xl italic text-[#0F2044]">
-              {me.stats?.campaignsSent ?? 0}
-            </p>
-            <p className="mt-1 text-xs text-[#7A7566]">Sent</p>
+          <div className="grid grid-cols-3 gap-4 sm:min-w-[320px]">
+            <div className="rounded-xl bg-[#FBF8F2] p-4 text-center">
+              <p className="font-[family-name:var(--font-logo)] text-2xl italic text-[#0F2044]">
+                {me.stats?.contacts ?? 0}
+              </p>
+              <p className="mt-1 text-xs text-[#7A7566]">Contacts</p>
+            </div>
+            <div className="rounded-xl bg-[#FBF8F2] p-4 text-center">
+              <p className="font-[family-name:var(--font-logo)] text-2xl italic text-[#0F2044]">
+                {me.stats?.campaigns ?? 0}
+              </p>
+              <p className="mt-1 text-xs text-[#7A7566]">Campaigns</p>
+            </div>
+            <div className="rounded-xl bg-[#FBF8F2] p-4 text-center">
+              <p className="font-[family-name:var(--font-logo)] text-2xl italic text-[#0F2044]">
+                {me.stats?.campaignsSent ?? 0}
+              </p>
+              <p className="mt-1 text-xs text-[#7A7566]">Sent</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <RenameWorkspaceCard
-        currentName={me.workspace.name}
-        onRenamed={(name) =>
-          setMe((prev) =>
-            prev ? { ...prev, workspace: { ...prev.workspace, name } } : prev
-          )
-        }
-      />
+      {/* Two-column dashboard body so the page fills the available width */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <UpdateNameCard
+            currentName={me.name ?? ""}
+            onSaved={(name) =>
+              setMe((prev) => (prev ? { ...prev, name } : prev))
+            }
+          />
 
-      <ChangePasswordCard />
+          <RenameWorkspaceCard
+            currentName={me.workspace.name}
+            onRenamed={(name) =>
+              setMe((prev) =>
+                prev
+                  ? { ...prev, workspace: { ...prev.workspace, name } }
+                  : prev
+              )
+            }
+          />
+
+          <ChangePasswordCard />
+        </div>
+
+        <div className="space-y-6 lg:col-span-1">
+          <div className="rounded-2xl border border-[#E3DCC9] bg-white p-6 shadow-sm">
+            <h2 className="text-sm font-medium text-[#0F2044]">
+              Account details
+            </h2>
+            <dl className="mt-4 space-y-4">
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-[#7A7566]">
+                  Email
+                </dt>
+                <dd className="mt-1 truncate text-sm text-[#0F2044]">
+                  {me.email}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-[#7A7566]">
+                  Workspace
+                </dt>
+                <dd className="mt-1 text-sm text-[#0F2044]">
+                  {me.workspace.name}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-[#7A7566]">
+                  Workspace created
+                </dt>
+                <dd className="mt-1 text-sm text-[#0F2044]">
+                  {formatDate(me.workspace.createdAt)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-[#7A7566]">
+                  User ID
+                </dt>
+                <dd className="mt-1 break-all font-mono text-xs text-[#7A7566]">
+                  {me.id}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-[#7A7566]">
+                  Workspace ID
+                </dt>
+                <dd className="mt-1 break-all font-mono text-xs text-[#7A7566]">
+                  {me.workspaceId}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="rounded-2xl border border-[#E3DCC9] bg-white p-6 shadow-sm">
+            <h2 className="text-sm font-medium text-[#0F2044]">
+              Keep your account secure
+            </h2>
+            <ul className="mt-4 space-y-3 text-sm text-[#7A7566]">
+              <li>Use a unique password you haven't used elsewhere.</li>
+              <li>Update your password periodically.</li>
+              <li>Keep your workspace name recognizable to your team.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UpdateNameCard({
+  currentName,
+  onSaved,
+}: {
+  currentName: string;
+  onSaved: (name: string) => void;
+}) {
+  const [name, setName] = useState(currentName);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setMessage(null);
+
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setMessage({ type: "error", text: "Name can't be empty." });
+      return;
+    }
+    if (trimmed === currentName) return;
+
+    setSaving(true);
+    try {
+      const result = await api.patch<{ name: string }>("/api/auth/me", {
+        name: trimmed,
+      });
+      onSaved(result.name);
+      setMessage({ type: "success", text: "Name updated." });
+    } catch (err) {
+      const text =
+        err instanceof ApiError ? err.message : "Something went wrong.";
+      setMessage({ type: "error", text });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-[#E3DCC9] bg-white p-6 shadow-sm">
+      <h2 className="text-sm font-medium text-[#0F2044]">Your name</h2>
+      <p className="mt-1 text-sm text-[#7A7566]">
+        This is how you'll appear across the dashboard.
+      </p>
+
+      <form
+        onSubmit={handleSubmit}
+        className="mt-4 flex flex-col gap-3 sm:flex-row"
+      >
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={100}
+          placeholder="Your full name"
+          className="flex-1 rounded-lg border border-[#E3DCC9] bg-[#FBF8F2] px-3 py-2 text-sm text-[#0F2044] outline-none focus:border-[#C9A227]"
+        />
+        <button
+          type="submit"
+          disabled={saving || name.trim() === currentName}
+          className="whitespace-nowrap rounded-lg bg-gradient-to-b from-[#F5D67D] via-[#E3BE5D] to-[#C9A227] px-4 py-2 text-sm font-medium text-[#0F2044] shadow-[0_1px_2px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.4)] transition hover:from-[#F7DE94] hover:via-[#EBC96E] hover:to-[#D4AC33] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </form>
+
+      {message && (
+        <p
+          className={`mt-2 text-sm ${
+            message.type === "success" ? "text-[#3E7A4E]" : "text-red-600"
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
     </div>
   );
 }

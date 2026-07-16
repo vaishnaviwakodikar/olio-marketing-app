@@ -93,6 +93,7 @@ router.get("/me", requireAuth, async (req: AuthedRequest, res) => {
         select: {
           id: true,
           email: true,
+          name: true,
           workspaceId: true,
           createdAt: true,
           workspace: { select: { name: true, createdAt: true } },
@@ -111,6 +112,25 @@ router.get("/me", requireAuth, async (req: AuthedRequest, res) => {
       campaignsSent: sentCampaignCount,
     },
   });
+});
+
+const updateNameSchema = z.object({
+  name: z.string().min(1).max(100),
+});
+
+router.patch("/me", requireAuth, async (req: AuthedRequest, res) => {
+  const parsed = updateNameSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+
+  const user = await prisma.user.update({
+    where: { id: req.userId },
+    data: { name: parsed.data.name },
+    select: { name: true },
+  });
+
+  res.json({ name: user.name });
 });
 
 function issueSession(res: any, userId: string, workspaceId: string) {
