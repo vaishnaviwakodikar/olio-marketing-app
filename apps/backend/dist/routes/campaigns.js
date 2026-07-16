@@ -145,6 +145,66 @@ router.get("/:id", async (req, res) => {
     res.json({ ...campaign, statusCounts: counts });
 });
 // ---------------------------------------------------------------------------
+// Duplicate - copy an existing campaign into a fresh draft
+// ---------------------------------------------------------------------------
+router.post("/:id/duplicate", async (req, res) => {
+    const workspaceId = req.workspaceId;
+    const original = await prisma_1.prisma.campaign.findFirst({
+        where: { id: req.params.id, workspaceId },
+        include: { recipients: true },
+    });
+    if (!original) {
+        return res.status(404).json({ error: "Campaign not found" });
+    }
+    let recipients = [];
+    if (original.recipientSource === "AUDIENCE" && original.audienceId) {
+        // Re-resolve membership fresh, since the audience may have changed
+        // since the original campaign was created.
+        const audience = await prisma_1.prisma.audience.findFirst({
+            where: { id: original.audienceId, workspaceId },
+        });
+        if (audience) {
+            const filter = (audience.filter ?? {});
+            const members = await (0, audiences_1.resolveAudienceMembers)(workspaceId, filter);
+            recipients = members.map((m) => ({
+                contactId: m.id,
+                status: "PENDING",
+            }));
+        }
+        // If the audience itself was deleted, fall through with empty
+        // recipients rather than failing the duplicate outright - the user
+        // can still edit and pick a new audience before sending.
+    }
+    else {
+        // PASTED_LIST: copy the original recipient rows as-is, resetting
+        // anything send-specific.
+        recipients = original.recipients.map((r) => ({
+            contactId: r.contactId ?? undefined,
+            rawEmail: r.rawEmail ?? undefined,
+            rawPhone: r.rawPhone ?? undefined,
+            status: r.status === "UNMATCHED" ? "UNMATCHED" : "PENDING",
+        }));
+    }
+    const duplicate = await prisma_1.prisma.campaign.create({
+        data: {
+            name: `Copy of ${original.name}`,
+            subject: original.subject,
+            body: original.body,
+            recipientSource: original.recipientSource,
+            audienceId: original.audienceId,
+            status: "DRAFT",
+            scheduledAt: null,
+            queueJobId: null,
+            workspaceId,
+            ...(recipients.length > 0
+                ? { recipients: { createMany: { data: recipients } } }
+                : {}),
+        },
+        include: { recipients: true },
+    });
+    res.status(201).json(duplicate);
+});
+// ---------------------------------------------------------------------------
 // Delete / cancel a scheduled campaign
 // ---------------------------------------------------------------------------
 router.delete("/:id", async (req, res) => {

@@ -20,6 +20,22 @@ function isValidSignature(timestamp: string, token: string, signature: string) {
   return expected === signature;
 }
 
+// Known prefetch/proxy user-agents that fire "opened" the moment an email
+// is delivered, regardless of whether a human actually looked at it.
+// This can never be fully accurate - Apple Mail Privacy Protection in
+// particular doesn't identify itself this cleanly - but it filters out
+// the most common false-positive source (Gmail's image proxy).
+const PROXY_USER_AGENT_PATTERNS = [
+  /googleimageproxy/i,
+  /google.*image.*proxy/i,
+  /ggpht\.com/i,
+];
+
+function isLikelyProxyOpen(userAgent: string | undefined | null): boolean {
+  if (!userAgent) return false;
+  return PROXY_USER_AGENT_PATTERNS.some((pattern) => pattern.test(userAgent));
+}
+
 // No requireAuth here - Mailgun calls this directly, it doesn't have a
 // session cookie. Authenticity is instead verified via the HMAC signature
 // Mailgun includes on every webhook payload.
@@ -35,6 +51,7 @@ router.post("/mailgun", async (req, res) => {
     signature.token,
     signature.signature
   );
+
   if (!valid) {
     // Log but still 200 - an invalid signature during local/dev testing
     // (e.g. signing key not set yet) shouldn't cause Mailgun to endlessly
@@ -68,6 +85,18 @@ router.post("/mailgun", async (req, res) => {
       },
     });
   } else if (event === "opened") {
+    const userAgent: string | undefined = eventData["client-info"]?.["user-agent"];
+
+    if (isLikelyProxyOpen(userAgent)) {
+      // Prefetch by an inbox provider's image proxy, not a real open.
+      // Skip the status update; log at debug level so it's still visible
+      // if you're diagnosing open-rate numbers.
+      console.log(
+        `Ignoring likely proxy open for ${recipient.id} (user-agent: ${userAgent})`
+      );
+      return res.status(200).json({ ok: true });
+    }
+
     await prisma.campaignRecipient.update({
       where: { id: recipient.id },
       data: { status: "OPENED", openedAt: new Date() },
