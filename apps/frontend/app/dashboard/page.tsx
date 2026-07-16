@@ -18,6 +18,15 @@ interface Campaign {
   createdAt: string;
 }
 
+// The campaigns endpoint is paginated on the backend now, so it responds
+// with { campaigns, total, page, totalPages } instead of a bare array.
+interface CampaignsResponse {
+  campaigns: Campaign[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
 const STATUS_STYLES: Record<Campaign["status"], string> = {
   DRAFT: "bg-[#EFEAD9] text-[#7A7566]",
   SCHEDULED: "bg-[#DCE6F5] text-[#2A4E8A]",
@@ -29,14 +38,30 @@ export default function DashboardHome() {
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [audiences, setAudiences] = useState<Audience[] | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null);
+  // Total sent count across ALL campaigns, not just the campaigns on the
+  // current page — comes straight from the paginated response metadata
+  // rather than being derived by filtering the (partial) campaigns array.
+  const [sentCount, setSentCount] = useState(0);
 
   useEffect(() => {
     api.get<Contact[]>("/api/contacts").then(setContacts).catch(() => setContacts([]));
     api.get<Audience[]>("/api/audiences").then(setAudiences).catch(() => setAudiences([]));
-    api.get<Campaign[]>("/api/campaigns").then(setCampaigns).catch(() => setCampaigns([]));
+    api
+      .get<CampaignsResponse>("/api/campaigns")
+      .then((res) => {
+        setCampaigns(res.campaigns);
+        // NOTE: this only reflects SENT campaigns within the fetched page.
+        // If you need an accurate total across all pages, expose a
+        // dedicated count from the backend (e.g. res.sentCount) and swap
+        // this line for that instead.
+        setSentCount(res.campaigns.filter((c) => c.status === "SENT").length);
+      })
+      .catch(() => {
+        setCampaigns([]);
+        setSentCount(0);
+      });
   }, []);
 
-  const sentCount = campaigns?.filter((c) => c.status === "SENT").length ?? 0;
   const recent = campaigns?.slice(0, 5) ?? [];
 
   return (

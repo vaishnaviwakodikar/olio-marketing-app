@@ -18,11 +18,20 @@ interface Audience {
   memberCount: number;
 }
 
+interface CampaignsResponse {
+  campaigns: Campaign[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+
+const CAMPAIGNS_PER_PAGE = 10;
 
 function pad(n: number) {
   return n.toString().padStart(2, "0");
@@ -265,6 +274,77 @@ function ScheduleDatePicker({
   );
 }
 
+function PaginationControls({
+  currentPage,
+  totalPages,
+  onChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  // Build a compact page list: first, last, current +/-1, with ellipses
+  const pages: (number | "ellipsis")[] = [];
+  for (let p = 1; p <= totalPages; p++) {
+    if (
+      p === 1 ||
+      p === totalPages ||
+      (p >= currentPage - 1 && p <= currentPage + 1)
+    ) {
+      pages.push(p);
+    } else if (pages[pages.length - 1] !== "ellipsis") {
+      pages.push("ellipsis");
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-[#0F2044]/10 px-4 py-3 sm:px-5">
+      <button
+        type="button"
+        onClick={() => onChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="rounded-md border border-[#0F2044]/15 px-2.5 py-1.5 text-xs font-medium text-[#0F2044] transition-colors hover:border-[#C9A227] hover:bg-[#C9A227]/10 hover:text-[#8a6d15] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-[#0F2044]/15 disabled:hover:bg-transparent disabled:hover:text-[#0F2044]"
+      >
+        ‹ Prev
+      </button>
+
+      <div className="flex items-center gap-1">
+        {pages.map((p, i) =>
+          p === "ellipsis" ? (
+            <span key={`ellipsis-${i}`} className="px-1.5 text-xs text-[#0F2044]/30">
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onChange(p)}
+              className={`flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-xs font-medium transition-colors ${
+                p === currentPage
+                  ? "bg-[#0F2044] text-white"
+                  : "text-[#0F2044]/60 hover:bg-[#0F2044]/8 hover:text-[#0F2044]"
+              }`}
+            >
+              {p}
+            </button>
+          )
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="rounded-md border border-[#0F2044]/15 px-2.5 py-1.5 text-xs font-medium text-[#0F2044] transition-colors hover:border-[#C9A227] hover:bg-[#C9A227]/10 hover:text-[#8a6d15] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-[#0F2044]/15 disabled:hover:bg-transparent disabled:hover:text-[#0F2044]"
+      >
+        Next ›
+      </button>
+    </div>
+  );
+}
+
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [audiences, setAudiences] = useState<Audience[]>([]);
@@ -291,11 +371,14 @@ export default function CampaignsPage() {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+
   async function loadAll() {
     setLoading(true);
     try {
       const [c, a] = await Promise.all([
-        api.get<Campaign[]>("/api/campaigns"),
+        fetchAllCampaigns(),
         api.get<Audience[]>("/api/audiences"),
       ]);
       setCampaigns(c);
@@ -308,10 +391,48 @@ export default function CampaignsPage() {
     }
   }
 
+  // The backend now paginates /api/campaigns server-side (a handful of
+  // campaigns per call, plus total/totalPages). We want pagination to live
+  // entirely on the frontend, so fetch every backend page up front and
+  // merge them into one full list before handing it to the table/cards.
+  async function fetchAllCampaigns(): Promise<Campaign[]> {
+    const first = await api.get<CampaignsResponse | Campaign[]>("/api/campaigns?page=1");
+
+    // Defensive: if the backend ever goes back to a bare array, just use it.
+    if (Array.isArray(first)) return first;
+
+    const all = [...first.campaigns];
+    const totalPages = first.totalPages ?? 1;
+
+    if (totalPages > 1) {
+      const rest = await Promise.all(
+        Array.from({ length: totalPages - 1 }, (_, i) =>
+          api.get<CampaignsResponse>(`/api/campaigns?page=${i + 2}`)
+        )
+      );
+      rest.forEach((page) => all.push(...page.campaigns));
+    }
+
+    return all;
+  }
+
   useEffect(() => {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const totalPages = Math.max(1, Math.ceil(campaigns.length / CAMPAIGNS_PER_PAGE));
+
+  // Keep currentPage in range whenever the campaign list changes size
+  // (e.g. after creating or duplicating a campaign shrinks/grows the list).
+  useEffect(() => {
+    setCurrentPage((p) => Math.min(Math.max(1, p), totalPages));
+  }, [totalPages]);
+
+  const paginatedCampaigns = campaigns.slice(
+    (currentPage - 1) * CAMPAIGNS_PER_PAGE,
+    currentPage * CAMPAIGNS_PER_PAGE
+  );
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -354,6 +475,7 @@ export default function CampaignsPage() {
       setPastedList("");
       setSendAt("");
       setAttachment(null);
+      setCurrentPage(1); // new campaign lands on page 1 (list is presumably newest-first)
       await loadAll();
     } catch (err) {
       setFormError(
@@ -644,7 +766,7 @@ export default function CampaignsPage() {
               </p>
             </div>
           )}
-          {campaigns.map((c) => (
+          {paginatedCampaigns.map((c) => (
             <Link
               key={c.id}
               href={`/dashboard/campaigns/${c.id}`}
@@ -680,80 +802,91 @@ export default function CampaignsPage() {
               </div>
             </Link>
           ))}
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onChange={setCurrentPage}
+          />
         </div>
 
         {/* Desktop/tablet: table */}
-        <div className="hidden overflow-x-auto sm:block">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-[#0F2044]/10 bg-[#FBF8F2]">
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50 sm:px-5">
-                  Name
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50 sm:px-5">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50 sm:px-5">
-                  Scheduled
-                </th>
-                <th className="px-4 py-3 sm:px-5"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={4} className="px-5 py-10 text-center text-sm text-[#0F2044]/40">
-                    Loading campaigns...
-                  </td>
+        <div className="hidden sm:block">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-[#0F2044]/10 bg-[#FBF8F2]">
+                  <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50 sm:px-5">
+                    Name
+                  </th>
+                  <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50 sm:px-5">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0F2044]/50 sm:px-5">
+                    Scheduled
+                  </th>
+                  <th className="px-4 py-3 sm:px-5"></th>
                 </tr>
-              )}
-              {!loading && campaigns.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-5 py-14 text-center">
-                    <p className="text-sm font-medium text-[#0F2044]/60">
-                      No campaigns yet
-                    </p>
-                    <p className="mt-1 text-xs text-[#0F2044]/40">
-                      Create your first campaign to reach your contacts.
-                    </p>
-                  </td>
-                </tr>
-              )}
-              {campaigns.map((c) => (
-                <tr
-                  key={c.id}
-                  className="border-b border-[#0F2044]/8 transition-colors last:border-0 hover:bg-[#FBF8F2]/60"
-                >
-                  <td className="px-4 py-3.5 font-medium text-[#0F2044] sm:px-5">{c.name}</td>
-                  <td className="px-4 py-3.5 sm:px-5">{statusBadge(c.status)}</td>
-                  <td className="px-4 py-3.5 text-[#0F2044]/55 sm:px-5">
-                    {c.scheduledAt
-                      ? new Date(c.scheduledAt).toLocaleString()
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3.5 text-right sm:px-5">
-                    <div className="flex items-center justify-end gap-4">
-                      <button
-                        type="button"
-                        onClick={() => handleDuplicate(c.id)}
-                        disabled={duplicatingId === c.id}
-                        className="text-xs font-medium text-[#0F2044]/50 transition-colors hover:text-[#C9A227] disabled:opacity-40"
-                      >
-                        {duplicatingId === c.id ? "Duplicating..." : "Duplicate"}
-                        
-                      </button>
-                      <Link
-                        href={`/dashboard/campaigns/${c.id}`}
-                        className="text-xs font-medium text-[#0F2044] transition-colors hover:text-[#C9A227]"
-                      >
-                        View analytics →
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-10 text-center text-sm text-[#0F2044]/40">
+                      Loading campaigns...
+                    </td>
+                  </tr>
+                )}
+                {!loading && campaigns.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-14 text-center">
+                      <p className="text-sm font-medium text-[#0F2044]/60">
+                        No campaigns yet
+                      </p>
+                      <p className="mt-1 text-xs text-[#0F2044]/40">
+                        Create your first campaign to reach your contacts.
+                      </p>
+                    </td>
+                  </tr>
+                )}
+                {paginatedCampaigns.map((c) => (
+                  <tr
+                    key={c.id}
+                    className="border-b border-[#0F2044]/8 transition-colors last:border-0 hover:bg-[#FBF8F2]/60"
+                  >
+                    <td className="px-4 py-3.5 font-medium text-[#0F2044] sm:px-5">{c.name}</td>
+                    <td className="px-4 py-3.5 sm:px-5">{statusBadge(c.status)}</td>
+                    <td className="px-4 py-3.5 text-[#0F2044]/55 sm:px-5">
+                      {c.scheduledAt
+                        ? new Date(c.scheduledAt).toLocaleString()
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-3.5 text-right sm:px-5">
+                      <div className="flex items-center justify-end gap-4">
+                        <button
+                          type="button"
+                          onClick={() => handleDuplicate(c.id)}
+                          disabled={duplicatingId === c.id}
+                          className="text-xs font-medium text-[#0F2044]/50 transition-colors hover:text-[#C9A227] disabled:opacity-40"
+                        >
+                          {duplicatingId === c.id ? "Duplicating..." : "Duplicate"}
+                        </button>
+                        <Link
+                          href={`/dashboard/campaigns/${c.id}`}
+                          className="text-xs font-medium text-[#0F2044] transition-colors hover:text-[#C9A227]"
+                        >
+                          View analytics →
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onChange={setCurrentPage}
+          />
         </div>
       </div>
     </div>

@@ -170,11 +170,29 @@ router.post("/", upload.single("attachment"), async (req: AuthedRequest, res) =>
 // ---------------------------------------------------------------------------
 
 router.get("/", async (req: AuthedRequest, res) => {
-  const campaigns = await prisma.campaign.findMany({
-    where: { workspaceId: req.workspaceId },
-    orderBy: { createdAt: "desc" },
+  const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+  const limit = Math.min(
+    100,
+    Math.max(1, parseInt(req.query.limit as string, 10) || 10)
+  );
+  const skip = (page - 1) * limit;
+
+  const [campaigns, total] = await Promise.all([
+    prisma.campaign.findMany({
+      where: { workspaceId: req.workspaceId },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.campaign.count({ where: { workspaceId: req.workspaceId } }),
+  ]);
+
+  res.json({
+    campaigns,
+    total,
+    page,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
   });
-  res.json(campaigns);
 });
 
 // ---------------------------------------------------------------------------
