@@ -87,6 +87,10 @@ router.post("/mailgun", async (req, res) => {
   } else if (event === "opened") {
     const userAgent: string | undefined = eventData["client-info"]?.["user-agent"];
 
+    // TEMPORARY DEBUG LOG - remove once we've confirmed the real
+    // user-agent string Mailgun sends for proxy-driven opens.
+    console.log(`[DEBUG] opened event user-agent: ${JSON.stringify(userAgent)}`);
+
     if (isLikelyProxyOpen(userAgent)) {
       // Prefetch by an inbox provider's image proxy, not a real open.
       // Skip the status update; log at debug level so it's still visible
