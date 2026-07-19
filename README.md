@@ -166,4 +166,4 @@ UI theme is "Mercury" — navy (`#0F2044`) and gold (`#C9A227`) on a cream backg
 - Real relational tags (see above) instead of a flattened custom field
 - Stronger webhook signature enforcement (401 on failure rather than log-and-accept)
 - Attachment size/type validation is minimal (PDF mime-type check only, 10MB cap) — no virus scanning or content validation
-- Delete UI for campaigns, audiences, and contacts (currently a manual DB operation — see Core concepts above)
+
