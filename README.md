@@ -100,26 +100,7 @@ A lightweight Mailchimp-style email marketing tool — manage contacts, build au
 - Once sent, a live analytics view shows recipient-by-recipient status (pending → sent → delivered → opened, or failed/unmatched), polling every 5 seconds, fed by Mailgun webhooks.
 - There's currently no delete option in the UI for campaigns, audiences, or contacts — cleanup during development is a manual DB operation via Prisma Studio or direct SQL (`CampaignRecipient` rows must be deleted before the parent `Campaign` row, since the foreign key is `RESTRICT`, not cascading).
 
-## Environment variables
 
-### `apps/backend/.env`
-
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | Postgres connection string (Neon) |
-| `JWT_SECRET` | Any long random string, used to sign auth tokens |
-| `FRONTEND_URL` | Where the frontend runs (for CORS) |
-| `PORT` | API port, defaults to 4000 |
-| `REDIS_URL` | Redis connection string (Upstash — `rediss://...` for TLS) |
-| `MAILGUN_API_KEY` | Mailgun private/sending API key |
-| `MAILGUN_DOMAIN` | Mailgun sandbox (or verified) domain |
-| `MAILGUN_WEBHOOK_SIGNING_KEY` | Used to verify incoming webhook payloads; falls back to `MAILGUN_API_KEY` if unset |
-
-### `apps/frontend/.env.local`
-
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | Base URL of the backend API |
 
 ## Running locally
 
