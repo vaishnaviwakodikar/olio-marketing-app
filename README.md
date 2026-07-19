@@ -6,7 +6,7 @@ A lightweight Mailchimp-style email marketing tool — manage contacts, build au
 **API:** https://backend-production-6171.up.railway.app
 **Repo:** https://github.com/vaishnaviwakodikar/olio-marketing-app.git
 **Demo video:** https://www.loom.com/share/fe0549344d9047939736ae0bd2524873
-
+Note : DNS to be set to IPv4 8.8.8.8 & 8.8.4.4
 ---
 
 ## Tech stack
