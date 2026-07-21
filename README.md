@@ -6,7 +6,7 @@ A lightweight Mailchimp-style email marketing tool — manage contacts, build au
 **API:** https://backend-production-6171.up.railway.app
 **Repo:** https://github.com/vaishnaviwakodikar/olio-marketing-app.git
 **Demo video:** https://www.loom.com/share/fe0549344d9047939736ae0bd2524873
-
+Note : DNS to be set to IPv4 8.8.8.8 & 8.8.4.4
 ---
 
 ## Tech stack
@@ -100,26 +100,7 @@ A lightweight Mailchimp-style email marketing tool — manage contacts, build au
 - Once sent, a live analytics view shows recipient-by-recipient status (pending → sent → delivered → opened, or failed/unmatched), polling every 5 seconds, fed by Mailgun webhooks.
 - There's currently no delete option in the UI for campaigns, audiences, or contacts — cleanup during development is a manual DB operation via Prisma Studio or direct SQL (`CampaignRecipient` rows must be deleted before the parent `Campaign` row, since the foreign key is `RESTRICT`, not cascading).
 
-## Environment variables
 
-### `apps/backend/.env`
-
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | Postgres connection string (Neon) |
-| `JWT_SECRET` | Any long random string, used to sign auth tokens |
-| `FRONTEND_URL` | Where the frontend runs (for CORS) |
-| `PORT` | API port, defaults to 4000 |
-| `REDIS_URL` | Redis connection string (Upstash — `rediss://...` for TLS) |
-| `MAILGUN_API_KEY` | Mailgun private/sending API key |
-| `MAILGUN_DOMAIN` | Mailgun sandbox (or verified) domain |
-| `MAILGUN_WEBHOOK_SIGNING_KEY` | Used to verify incoming webhook payloads; falls back to `MAILGUN_API_KEY` if unset |
-
-### `apps/frontend/.env.local`
-
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | Base URL of the backend API |
 
 ## Running locally
 
@@ -185,4 +166,4 @@ UI theme is "Mercury" — navy (`#0F2044`) and gold (`#C9A227`) on a cream backg
 - Real relational tags (see above) instead of a flattened custom field
 - Stronger webhook signature enforcement (401 on failure rather than log-and-accept)
 - Attachment size/type validation is minimal (PDF mime-type check only, 10MB cap) — no virus scanning or content validation
-- Delete UI for campaigns, audiences, and contacts (currently a manual DB operation — see Core concepts above)
+
