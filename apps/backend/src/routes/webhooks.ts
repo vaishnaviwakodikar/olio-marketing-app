@@ -31,7 +31,17 @@ const PROXY_USER_AGENT_PATTERNS = [
   /ggpht\.com/i,
 ];
 
-function isLikelyProxyOpen(userAgent: string | undefined | null): boolean {
+function isLikelyProxyOpen(
+  userAgent: string | undefined | null,
+  bot: string | undefined | null
+): boolean {
+  // Mailgun's own bot-detection field is the reliable signal - it's set
+  // whenever Mailgun identifies the request as an inbox provider's
+  // prefetch/proxy (e.g. "gmail", "yahoo", "outlook"), even when that
+  // proxy spoofs a normal-looking browser user-agent (Gmail's image
+  // proxy does exactly this - sends a real Chrome/Edge UA string).
+  if (bot && bot.trim() !== "") return true;
+
   if (!userAgent) return false;
   return PROXY_USER_AGENT_PATTERNS.some((pattern) => pattern.test(userAgent));
 }
@@ -85,27 +95,23 @@ router.post("/mailgun", async (req, res) => {
       },
     });
   } else if (event === "opened") {
-    const userAgent: string | undefined = eventData["client-info"]?.["user-agent"];
+  const userAgent: string | undefined = eventData["client-info"]?.["user-agent"];
+  const bot: string | undefined = eventData["client-info"]?.["bot"];
 
-    // TEMPORARY DEBUG LOG - remove once we've confirmed the real
-    // user-agent string Mailgun sends for proxy-driven opens.
-    console.log(`[DEBUG] opened event user-agent: ${JSON.stringify(userAgent)}`);
+  console.log(`[DEBUG] opened event user-agent: ${JSON.stringify(userAgent)}, bot: ${JSON.stringify(bot)}`);
 
-    if (isLikelyProxyOpen(userAgent)) {
-      // Prefetch by an inbox provider's image proxy, not a real open.
-      // Skip the status update; log at debug level so it's still visible
-      // if you're diagnosing open-rate numbers.
-      console.log(
-        `Ignoring likely proxy open for ${recipient.id} (user-agent: ${userAgent})`
-      );
-      return res.status(200).json({ ok: true });
-    }
-
-    await prisma.campaignRecipient.update({
-      where: { id: recipient.id },
-      data: { status: "OPENED", openedAt: new Date() },
-    });
+  if (isLikelyProxyOpen(userAgent, bot)) {
+    console.log(
+      `Ignoring likely proxy open for ${recipient.id} (bot: ${bot}, user-agent: ${userAgent})`
+    );
+    return res.status(200).json({ ok: true });
   }
+
+  await prisma.campaignRecipient.update({
+    where: { id: recipient.id },
+    data: { status: "OPENED", openedAt: new Date() },
+  });
+}
 
   res.status(200).json({ ok: true });
 });
