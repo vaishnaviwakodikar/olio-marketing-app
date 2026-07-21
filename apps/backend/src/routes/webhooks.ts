@@ -31,19 +31,52 @@ const PROXY_USER_AGENT_PATTERNS = [
   /ggpht\.com/i,
 ];
 
-function isLikelyProxyOpen(
-  userAgent: string | undefined | null,
-  bot: string | undefined | null
-): boolean {
-  // Mailgun's own bot-detection field is the reliable signal - it's set
-  // whenever Mailgun identifies the request as an inbox provider's
-  // prefetch/proxy (e.g. "gmail", "yahoo", "outlook"), even when that
-  // proxy spoofs a normal-looking browser user-agent (Gmail's image
-  // proxy does exactly this - sends a real Chrome/Edge UA string).
-  if (bot && bot.trim() !== "") return true;
+// How soon after "delivered" an "opened" event has to arrive for us to
+// treat it as an automated prefetch rather than a real human open.
+// Real opens - even fast ones where someone has the inbox open and
+// clicks in immediately - essentially never land inside this window;
+// prefetch happens as part of delivery itself, so it's near-instant.
+const PROXY_OPEN_WINDOW_SECONDS = 5;
 
+function matchesProxyUserAgent(userAgent: string | undefined | null): boolean {
   if (!userAgent) return false;
   return PROXY_USER_AGENT_PATTERNS.some((pattern) => pattern.test(userAgent));
+}
+
+// Decide whether an "opened" event is a bot/proxy prefetch rather than a
+// genuine human open.
+//
+// Mailgun's `client-info.bot` field (e.g. "gmail") tells us the request
+// came through an inbox provider's proxy - but that's not enough on its
+// own, because Gmail routes ALL image loads (including real ones a human
+// triggers by opening the mail) through the same proxy infrastructure.
+// So a "gmail" bot tag can show up on a totally genuine open too.
+//
+// The thing prefetch-driven opens have in common is *timing*: they fire
+// within a second or two of "delivered", before a human could plausibly
+// have seen the email. A real open - even a fast one - happens after the
+// notification arrives, the person switches to their mail app, and the
+// message renders, which takes noticeably longer than that.
+//
+// So: only treat it as a proxy open when BOTH the bot flag/user-agent
+// pattern matches AND it happened suspiciously fast after delivery.
+function isLikelyProxyOpen(params: {
+  userAgent: string | undefined | null;
+  bot: string | undefined | null;
+  secondsSinceDelivery: number | null;
+}): boolean {
+  const { userAgent, bot, secondsSinceDelivery } = params;
+
+  const flaggedAsBot = Boolean(bot && bot.trim() !== "");
+  const looksLikeProxyUA = matchesProxyUserAgent(userAgent);
+
+  if (!flaggedAsBot && !looksLikeProxyUA) return false;
+
+  // If we don't have a delivered timestamp to compare against, fall back
+  // to trusting the bot/user-agent signal alone.
+  if (secondsSinceDelivery === null) return flaggedAsBot || looksLikeProxyUA;
+
+  return secondsSinceDelivery < PROXY_OPEN_WINDOW_SECONDS;
 }
 
 // No requireAuth here - Mailgun calls this directly, it doesn't have a
@@ -95,23 +128,33 @@ router.post("/mailgun", async (req, res) => {
       },
     });
   } else if (event === "opened") {
-  const userAgent: string | undefined = eventData["client-info"]?.["user-agent"];
-  const bot: string | undefined = eventData["client-info"]?.["bot"];
+    const userAgent: string | undefined = eventData["client-info"]?.["user-agent"];
+    const bot: string | undefined = eventData["client-info"]?.["bot"];
 
-  console.log(`[DEBUG] opened event user-agent: ${JSON.stringify(userAgent)}, bot: ${JSON.stringify(bot)}`);
+    const deliveredAt = recipient.deliveredAt;
+    const openedAt = new Date();
+    const secondsSinceDelivery = deliveredAt
+      ? (openedAt.getTime() - new Date(deliveredAt).getTime()) / 1000
+      : null;
 
-  if (isLikelyProxyOpen(userAgent, bot)) {
     console.log(
-      `Ignoring likely proxy open for ${recipient.id} (bot: ${bot}, user-agent: ${userAgent})`
+      `[DEBUG] opened event - bot: ${JSON.stringify(bot)}, userAgent: ${JSON.stringify(
+        userAgent
+      )}, secondsSinceDelivery: ${secondsSinceDelivery}`
     );
-    return res.status(200).json({ ok: true });
-  }
 
-  await prisma.campaignRecipient.update({
-    where: { id: recipient.id },
-    data: { status: "OPENED", openedAt: new Date() },
-  });
-}
+    if (isLikelyProxyOpen({ userAgent, bot, secondsSinceDelivery })) {
+      console.log(
+        `Ignoring likely proxy open for ${recipient.id} (bot: ${bot}, secondsSinceDelivery: ${secondsSinceDelivery})`
+      );
+      return res.status(200).json({ ok: true });
+    }
+
+    await prisma.campaignRecipient.update({
+      where: { id: recipient.id },
+      data: { status: "OPENED", openedAt },
+    });
+  }
 
   res.status(200).json({ ok: true });
 });
